@@ -1,0 +1,61 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "email", "createdAt"]
+    },
+    "Thread": {
+      "title": "Thread",
+      "description": "A research thread/conversation.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "status": { "type": "string", "enum": ["idle", "hypothesizing", "testing", "completed"] },
+        "prompt": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "title", "status", "prompt", "createdAt", "updatedAt"]
+    },
+    "ResearchStep": {
+      "title": "Research Step",
+      "description": "A single step in the research process.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "threadId": { "type": "string" },
+        "type": { "type": "string", "enum": ["hypothesis", "test", "reflection", "result"] },
+        "agentName": { "type": "string" },
+        "content": { "type": "string" },
+        "findings": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "threadId", "type", "content", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile data."
+    },
+    "/threads/{threadId}": {
+      "schema": "Thread",
+      "description": "Research threads."
+    },
+    "/threads/{threadId}/steps/{stepId}": {
+      "schema": "ResearchStep",
+      "description": "Steps within a research thread."
+    }
+  }
+}

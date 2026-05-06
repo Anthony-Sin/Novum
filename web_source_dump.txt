@@ -1,0 +1,1035 @@
+﻿
+================================================================
+FILE: C:\Users\antho\Downloads\Novum\web\index.html
+================================================================
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Novum | Agentic AI Forensics</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
+
+
+
+================================================================
+FILE: C:\Users\antho\Downloads\Novum\web\package.json
+================================================================
+
+{
+  "name": "react-example",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port=3000 --host=0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview",
+    "clean": "rm -rf dist",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@google/genai": "^1.29.0",
+    "@tailwindcss/vite": "^4.1.14",
+    "@vitejs/plugin-react": "^5.0.4",
+    "clsx": "^2.1.1",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "firebase": "^12.12.1",
+    "lucide-react": "^0.546.0",
+    "motion": "^12.23.24",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
+    "react-markdown": "^10.1.0",
+    "tailwind-merge": "^3.5.0",
+    "vite": "^6.2.3"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.14.0",
+    "autoprefixer": "^10.4.21",
+    "tailwindcss": "^4.1.14",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.3"
+  }
+}
+
+
+
+================================================================
+FILE: C:\Users\antho\Downloads\Novum\web\tsconfig.json
+================================================================
+
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "module": "ESNext",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "allowJs": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    },
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  }
+}
+
+
+
+================================================================
+FILE: C:\Users\antho\Downloads\Novum\web\vite.config.ts
+================================================================
+
+import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+import {defineConfig, loadEnv} from 'vite';
+
+export default defineConfig(({mode}) => {
+  const env = loadEnv(mode, '.', '');
+  return {
+    plugins: [react(), tailwindcss()],
+    define: {
+      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+    },
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, '.'),
+      },
+    },
+    server: {
+      // HMR is disabled in AI Studio via DISABLE_HMR env var.
+      // Do not modifyÃ¢Â€Â”file watching is disabled to prevent flickering during agent edits.
+      hmr: process.env.DISABLE_HMR !== 'true',
+    },
+  };
+});
+
+
+
+================================================================
+FILE: C:\Users\antho\Downloads\Novum\web\src\App.tsx
+================================================================
+
+import { useState, useEffect } from 'react';
+import { useFirebase } from './components/FirebaseProvider';
+import Sidebar from './components/Sidebar';
+import ThreadInput from './components/ThreadInput';
+import ResearchThread from './components/ResearchThread';
+import { db } from './lib/firebase';
+import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { generateThreadTitle } from './services/geminiService';
+import { motion, AnimatePresence } from 'motion/react';
+import { FlaskConical, Github, Twitter, LogIn } from 'lucide-react';
+import { handleFirestoreError, OperationType } from './lib/errorHandlers';
+
+export default function App() {
+  const { user: realUser, loading: authLoading, signIn } = useFirebase();
+  const [threads, setThreads] = useState<any[]>([]);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
+
+  // Mock user for demo purposes if not signed in
+  const user = realUser || { 
+    uid: 'demo-user', 
+    displayName: 'Anthony Sinchi', 
+    photoURL: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Anthony' 
+  };
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'threads'),
+      where('userId', '==', user.uid),
+      orderBy('updatedAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snap) => {
+      setThreads(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, (err) => {
+      // Handle error quietly for demo
+    });
+
+    return () => unsubscribe();
+  }, [user.uid]);
+
+  const handleStartThread = async (prompt: string) => {
+    setIsStarting(true);
+    try {
+      const title = await generateThreadTitle(prompt);
+      const threadRef = await addDoc(collection(db, 'threads'), {
+        userId: user.uid,
+        title,
+        prompt,
+        status: 'idle',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      setActiveThreadId(threadRef.id);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
+  return (
+    <div className="flex h-screen bg-beige-bg overflow-hidden text-ink font-sans">
+      <Sidebar 
+        threads={threads} 
+        activeId={activeThreadId || undefined} 
+        onNew={() => setActiveThreadId(null)}
+        onSelect={setActiveThreadId}
+      />
+
+      <main className="flex-1 ml-12 lg:ml-14 relative flex flex-col transition-all duration-300">
+        <header className="px-6 py-4 border-b border-line flex justify-between items-center bg-beige-bg/90 backdrop-blur-sm z-40">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xs font-bold tracking-widest uppercase opacity-80">Novum</h1>
+            <span className="w-px h-3 bg-line" />
+            <p className="text-[9px] uppercase tracking-[0.2em] opacity-40 font-bold">Paper Forensics</p>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <p className="text-[9px] font-bold opacity-30 uppercase tracking-tighter">{user.displayName}</p>
+            <img 
+              src={user.photoURL || ''} 
+              alt={user.displayName || ''} 
+              className="w-5 h-5 rounded-full grayscale opacity-40"
+            />
+          </div>
+        </header>
+
+        <div className="flex-1 overflow-hidden relative">
+          <AnimatePresence mode="wait">
+            {activeThreadId ? (
+              <motion.div
+                key="thread"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="h-full"
+              >
+                <ResearchThread threadId={activeThreadId} />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="input"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="h-full flex flex-col items-center justify-center"
+              >
+                <ThreadInput onStart={handleStartThread} isStarting={isStarting} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <footer className="px-6 py-3 border-t border-line flex justify-center items-center">
+          <p className="text-[8px] uppercase tracking-[0.4em] opacity-10 font-bold">Novum Paper Forensics</p>
+        </footer>
+      </main>
+    </div>
+  );
+}
+
+
+
+================================================================
+FILE: C:\Users\antho\Downloads\Novum\web\src\index.css
+================================================================
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Cormorant Garamond", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* High Density Palette */
+  --color-beige-bg: #F5F2ED;
+  --color-ink: #1A1A1A;
+  --color-accent: #4A5D4E;
+  --color-line: rgba(26, 26, 26, 0.12);
+  --color-white-translucent: rgba(255, 255, 255, 0.4);
+}
+
+@layer base {
+  body {
+    @apply bg-beige-bg text-ink font-sans antialiased;
+    margin: 0;
+    height: 100vh;
+    overflow: hidden;
+  }
+}
+
+@layer components {
+  .forensic-card {
+    @apply bg-white-translucent border border-line rounded-[2px] transition-all duration-200;
+  }
+
+  .status-dot {
+    @apply w-2 h-2 rounded-full inline-block mr-2;
+  }
+
+  .scroll-area {
+    @apply overflow-y-auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scroll-area::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.markdown-body {
+  @apply text-ink leading-relaxed;
+}
+
+.markdown-body h1, .markdown-body h2, .markdown-body h3 {
+  @apply font-sans font-bold uppercase tracking-tighter mt-4 mb-2;
+}
+
+.markdown-body p {
+  @apply mb-3 text-sm;
+}
+
+.markdown-body code {
+  @apply bg-ink/5 px-1 rounded-sm font-mono text-[12px];
+}
+
+
+
+================================================================
+FILE: C:\Users\antho\Downloads\Novum\web\src\main.tsx
+================================================================
+
+import {StrictMode} from 'react';
+import {createRoot} from 'react-dom/client';
+import App from './App.tsx';
+import './index.css';
+import { FirebaseProvider } from './components/FirebaseProvider.tsx';
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <FirebaseProvider>
+      <App />
+    </FirebaseProvider>
+  </StrictMode>,
+);
+
+
+
+================================================================
+FILE: C:\Users\antho\Downloads\Novum\web\src\components\FirebaseProvider.tsx
+================================================================
+
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { auth, db } from '../lib/firebase';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+
+interface FirebaseContextType {
+  user: User | null;
+  loading: boolean;
+  signIn: () => Promise<void>;
+  logout: () => Promise<void>;
+}
+
+const FirebaseContext = createContext<FirebaseContextType | undefined>(undefined);
+
+export function FirebaseProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // Sync user to Firestore
+        const userRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userRef);
+        
+        if (!userDoc.exists()) {
+          await setDoc(userRef, {
+            userId: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            photoURL: user.photoURL,
+            createdAt: serverTimestamp(),
+          });
+        }
+        setUser(user);
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const signIn = async () => {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  };
+
+  const logout = async () => {
+    await signOut(auth);
+  };
+
+  return (
+    <FirebaseContext.Provider value={{ user, loading, signIn, logout }}>
+      {children}
+    </FirebaseContext.Provider>
+  );
+}
+
+export function useFirebase() {
+  const context = useContext(FirebaseContext);
+  if (context === undefined) {
+    throw new Error('useFirebase must be used within a FirebaseProvider');
+  }
+  return context;
+}
+
+
+
+================================================================
+FILE: C:\Users\antho\Downloads\Novum\web\src\components\ResearchStepCard.tsx
+================================================================
+
+import Markdown from 'react-markdown';
+import { motion } from 'motion/react';
+import { FlaskConical, Search, CheckCircle2, AlertCircle, RefreshCcw } from 'lucide-react';
+import { cn } from '../lib/utils';
+
+interface Step {
+  id: string;
+  type: 'hypothesis' | 'test' | 'reflection' | 'result';
+  agentName: string;
+  content: string;
+  findings?: string[];
+  createdAt: any;
+}
+
+interface ResearchStepCardProps {
+  step: Step;
+  index: number;
+}
+
+const getStepIcon = (type: string) => {
+  switch (type) {
+    case 'hypothesis': return <Search className="w-4 h-4 text-accent" />;
+    case 'test': return <FlaskConical className="w-4 h-4 text-blue-500" />;
+    case 'reflection': return <RefreshCcw className="w-4 h-4 text-amber-500" />;
+    case 'result': return <CheckCircle2 className="w-4 h-4 text-emerald-500" />;
+    default: return <AlertCircle className="w-4 h-4 text-zinc-400" />;
+  }
+};
+
+const getStepColor = (type: string) => {
+  switch (type) {
+    case 'hypothesis': return 'border-accent bg-accent/5';
+    case 'test': return 'border-blue-200 bg-blue-50/30';
+    case 'reflection': return 'border-amber-200 bg-amber-50/30';
+    case 'result': return 'border-emerald-200 bg-emerald-50/30 text-emerald-900';
+    default: return 'border-beige-300 bg-white';
+  }
+};
+
+export default function ResearchStepCard({ step, index }: ResearchStepCardProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      className="relative pl-6 pb-6 last:pb-2 group"
+    >
+      {/* Indicator */}
+      <div className={cn(
+        "absolute left-0 top-0.5 w-1 h-full rounded-full transition-colors",
+        step.type === 'hypothesis' ? 'bg-ink' : 
+        step.type === 'test' ? 'bg-emerald-600' : 
+        'bg-ink/10'
+      )} />
+
+      <div className="space-y-1">
+        <div className="flex items-center gap-2 opacity-60">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-ink">
+            {step.type}
+          </p>
+          <span className="text-[9px] font-mono">/ {step.agentName}</span>
+        </div>
+
+        <div className="markdown-body font-serif italic text-sm text-ink leading-relaxed">
+          <Markdown>{step.content}</Markdown>
+        </div>
+
+        {step.findings && step.findings.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {step.findings.map((finding, idx) => (
+              <span key={idx} className="bg-ink/5 px-2 py-0.5 rounded-sm font-mono text-[9px] uppercase tracking-tighter opacity-80">
+                &gt; {finding}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+
+
+================================================================
+FILE: C:\Users\antho\Downloads\Novum\web\src\components\ResearchThread.tsx
+================================================================
+
+import { useState, useEffect } from 'react';
+import { db } from '../lib/firebase';
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
+import { generateResearchStep } from '../services/geminiService';
+import ResearchStepCard from './ResearchStepCard';
+import { motion, AnimatePresence } from 'motion/react';
+import { Loader2, Zap } from 'lucide-react';
+import { handleFirestoreError, OperationType } from '../lib/errorHandlers';
+import { cn } from '../lib/utils';
+
+interface ResearchThreadProps {
+  threadId: string;
+}
+
+export default function ResearchThread({ threadId }: ResearchThreadProps) {
+  const [steps, setSteps] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [threadData, setThreadData] = useState<any>(null);
+
+  useEffect(() => {
+    const threadRef = doc(db, 'threads', threadId);
+    const unsubThread = onSnapshot(threadRef, (snap) => {
+      setThreadData(snap.data());
+    }, (err) => handleFirestoreError(err, OperationType.GET, `threads/${threadId}`));
+
+    const stepsRef = collection(db, 'threads', threadId, 'steps');
+    const q = query(stepsRef, orderBy('createdAt', 'asc'));
+    
+    const unsubSteps = onSnapshot(q, (snap) => {
+      setSteps(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setLoading(false);
+    }, (err) => handleFirestoreError(err, OperationType.GET, `threads/${threadId}/steps`));
+
+    return () => {
+      unsubThread();
+      unsubSteps();
+    };
+  }, [threadId]);
+
+  const runNextStep = async () => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+
+    try {
+      const context = steps.map(s => `${s.agentName} (${s.type}): ${s.content}`).join('\n');
+      const nextStep = await generateResearchStep(threadData.prompt, context);
+      
+      if (nextStep) {
+        const stepsRef = collection(db, 'threads', threadId, 'steps');
+        await addDoc(stepsRef, {
+          ...nextStep,
+          threadId,
+          createdAt: serverTimestamp(),
+        });
+
+        // Update thread status if needed
+        if (nextStep.type === 'result') {
+          const threadRef = doc(db, 'threads', threadId);
+          await updateDoc(threadRef, { status: 'completed', updatedAt: serverTimestamp() });
+        } else {
+          const threadRef = doc(db, 'threads', threadId);
+          await updateDoc(threadRef, { status: 'testing', updatedAt: serverTimestamp() });
+        }
+      }
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `threads/${threadId}/steps`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-[50vh]">
+      <Loader2 className="w-8 h-8 text-accent animate-spin" />
+    </div>
+  );
+
+  return (
+    <div className="h-full flex flex-col overflow-hidden bg-beige-bg">
+      <div className="flex-1 overflow-hidden relative">
+        <div className="absolute inset-0 scroll-area px-8 py-12 flex flex-col gap-12">
+          {/* Research Objective Header */}
+          <div className="max-w-2xl mx-auto w-full space-y-4 text-center border-b border-line pb-12 opacity-80">
+            <p className="text-[9px] uppercase font-bold tracking-[0.3em] opacity-40">Forensic Investigation #0x{threadId.slice(-4)}</p>
+            <h2 className="font-serif italic text-3xl tracking-tight leading-snug">&quot;{threadData?.prompt}&quot;</h2>
+          </div>
+
+          <div className="max-w-2xl mx-auto w-full space-y-8">
+            <AnimatePresence initial={false}>
+              {steps.map((step, index) => (
+                <div key={step.id}>
+                   <ResearchStepCard step={step} index={index} />
+                </div>
+              ))}
+            </AnimatePresence>
+            
+            {isProcessing && (
+              <motion.div 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }}
+                className="flex items-center gap-3 opacity-40 ml-6"
+              >
+                <div className="w-5 h-5 flex items-center justify-center">
+                  <Loader2 className="w-4 h-4 animate-spin text-ink" />
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-widest font-mono italic">Agent reasoning loop active...</span>
+              </motion.div>
+            )}
+          </div>
+          
+          <div className="h-32 shrink-0" /> {/* Spacer */}
+        </div>
+      </div>
+
+      {/* Bottom Command Center */}
+      <div className="p-6 bg-white/40 backdrop-blur-md border-t border-line">
+        <div className="max-w-2xl mx-auto">
+          <div className="relative group border border-line bg-white rounded-lg overflow-hidden flex items-stretch focus-within:border-ink transition-all shadow-xl shadow-ink/5">
+            <div className="p-4 flex items-center border-r border-line opacity-20">
+               <Zap className="w-4 h-4" />
+            </div>
+            <input 
+              value={isProcessing ? "Processing logical instruction..." : undefined}
+              placeholder="Inject observation or specific protocol instruction..."
+              className="flex-1 bg-transparent px-4 py-4 text-xs font-mono text-ink/60 outline-none placeholder:opacity-20"
+              readOnly={isProcessing}
+            />
+            <button
+              onClick={runNextStep}
+              disabled={isProcessing || threadData?.status === 'completed'}
+              className={cn(
+                "px-8 py-4 font-bold text-[11px] uppercase tracking-[0.2em] transition-all",
+                isProcessing 
+                  ? "bg-ink/5 text-ink/20" 
+                  : "bg-ink text-white hover:bg-zinc-800"
+              )}
+            >
+              {isProcessing ? 'Working' : threadData?.status === 'completed' ? 'Archived' : 'Sequence'}
+            </button>
+          </div>
+          <div className="mt-3 flex justify-between items-center px-2">
+            <div className="flex gap-4 opacity-20">
+               <span className="text-[8px] font-bold uppercase tracking-widest">Arize Sync: 0.98</span>
+               <span className="text-[8px] font-bold uppercase tracking-widest">Logic Drift: 0.02</span>
+            </div>
+            <div className="text-[8px] font-bold uppercase tracking-widest opacity-20">
+               Protocol: Scientific_Method_v2.4
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================================
+FILE: C:\Users\antho\Downloads\Novum\web\src\components\Sidebar.tsx
+================================================================
+
+import { Settings, Plus, Archive, FileText } from 'lucide-react';
+import { cn } from '../lib/utils';
+
+interface SidebarProps {
+  activeId?: string;
+  onNew: () => void;
+  onSelect: (id: string) => void;
+  threads: any[];
+}
+
+export default function Sidebar({ activeId, onNew, onSelect, threads }: SidebarProps) {
+  return (
+    <div className="w-12 lg:w-14 group flex flex-col h-screen border-r border-line bg-beige-bg fixed left-0 top-0 z-50 transition-all duration-500 hover:lg:w-60">
+      <div className="p-4 border-b border-line flex items-center justify-center lg:justify-start gap-4 overflow-hidden h-[57px]">
+        <div className="w-8 h-8 flex items-center justify-center rounded-sm shrink-0">
+          <FileText className="w-5 h-5 text-ink" />
+        </div>
+        <div className="hidden group-hover:lg:block overflow-hidden whitespace-nowrap">
+          <h1 className="font-bold text-xs tracking-widest uppercase">Forensics</h1>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-3 py-6 space-y-8 scroll-area">
+        <div className="space-y-4">
+          <button 
+            onClick={onNew}
+            className="w-full flex items-center justify-center lg:justify-start gap-4 p-2.5 text-ink border border-line hover:border-ink transition-all rounded-sm group/btn"
+          >
+            <Plus className="w-4 h-4 shrink-0 transition-transform group-hover/btn:rotate-90" />
+            <span className="hidden group-hover:lg:block font-bold text-[10px] uppercase tracking-[0.2em] whitespace-nowrap">New Investigation</span>
+          </button>
+        </div>
+
+        <div className="space-y-4 pt-6 border-t border-line/50">
+          <div className="space-y-1">
+            {threads.map((thread) => (
+              <button
+                key={thread.id}
+                onClick={() => onSelect(thread.id)}
+                className={cn(
+                  "w-full flex items-center gap-4 px-2.5 py-3 transition-all border-l-2",
+                  activeId === thread.id 
+                    ? "border-ink bg-white/40 opacity-100" 
+                    : "border-transparent opacity-40 hover:opacity-100 hover:bg-white/20"
+                )}
+              >
+                <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                  <div className={cn("w-1 h-1 rounded-full", activeId === thread.id ? "bg-ink" : "bg-ink/20")} />
+                </div>
+                <span className="hidden group-hover:lg:block truncate text-[10px] font-bold uppercase tracking-tight whitespace-nowrap">
+                  {thread.title}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="p-3 border-t border-line bg-white/5">
+        <button className="w-full flex items-center justify-center lg:justify-start gap-4 p-2.5 opacity-40 hover:opacity-100 transition-all">
+          <Settings className="w-4 h-4 shrink-0" />
+          <span className="hidden group-hover:lg:block font-bold text-[10px] uppercase tracking-[0.2em]">Config</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================================
+FILE: C:\Users\antho\Downloads\Novum\web\src\components\ThreadInput.tsx
+================================================================
+
+import { useState, useRef, useEffect } from 'react';
+import { ArrowRight, Paperclip, Search, FlaskConical, Loader2, Sparkles, AlertCircle } from 'lucide-react';
+import { motion } from 'motion/react';
+import { cn } from '../lib/utils';
+
+interface ThreadInputProps {
+  onStart: (prompt: string) => void;
+  isStarting?: boolean;
+}
+
+export default function ThreadInput({ onStart, isStarting }: ThreadInputProps) {
+  const [prompt, setPrompt] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const adjustHeight = () => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
+    }
+  };
+
+  useEffect(() => {
+    adjustHeight();
+  }, [prompt]);
+
+  const handleSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (prompt.trim() && !isStarting) {
+      onStart(prompt.trim());
+      setPrompt('');
+    }
+  };
+
+  const examples = [
+    {
+      title: "Llama-3 Hallucination Analysis",
+      prompt: "Analyze the primary cause of latent hallucination in the Llama-3 70B RAG pipeline using recent telemetry.",
+      icon: <AlertCircle className="w-3.5 h-3.5" />
+    },
+    {
+      title: "Self-Correction Benchmarking",
+      prompt: "Benchmark self-correction capabilities in GPT-4o vs Claude 3.5 Sonnet for code-generation tasks.",
+      icon: <FlaskConical className="w-3.5 h-3.5" />
+    },
+    {
+      title: "Context Window Truncation",
+      prompt: "Investigate if document retrieval window (K=5) leads to evidence truncation in forensic traces.",
+      icon: <Search className="w-3.5 h-3.5" />
+    }
+  ];
+
+  return (
+    <div className="w-full max-w-3xl px-8 flex flex-col items-center">
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full space-y-12 mb-12 text-center"
+      >
+        <div className="space-y-6">
+          <h2 className="font-serif italic text-4xl lg:text-5xl text-ink tracking-tight leading-tight max-w-2xl mx-auto">
+            Systematic Forensics for Scientific Papers
+          </h2>
+          <p className="text-[10px] uppercase tracking-[0.4em] font-bold opacity-30">
+            Autonomous Logic // Agentic Testing // Zero-Bias Observation
+          </p>
+        </div>
+      </motion.div>
+
+      <form 
+        onSubmit={handleSubmit} 
+        className="w-full bg-white/60 backdrop-blur-md rounded-lg border border-line shadow-2xl shadow-ink/5 p-2 focus-within:border-ink transition-all duration-300"
+      >
+        <div className="flex flex-col gap-2 p-4">
+          <textarea
+            ref={textareaRef}
+            rows={1}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit();
+              }
+            }}
+            placeholder="Describe your research objective..."
+            className="w-full bg-transparent outline-none resize-none font-serif italic text-lg lg:text-xl text-ink placeholder:text-ink/10"
+          />
+          
+          <div className="flex items-center justify-between mt-4">
+            <div className="flex gap-4 opacity-40">
+              <Paperclip className="w-4 h-4 cursor-pointer hover:opacity-100 transition-opacity" />
+              <Search className="w-4 h-4 cursor-pointer hover:opacity-100 transition-opacity" />
+              <FlaskConical className="w-4 h-4 cursor-pointer hover:opacity-100 transition-opacity" />
+            </div>
+            
+            <button
+              type="submit"
+              disabled={!prompt.trim() || isStarting}
+              className={cn(
+                "flex items-center gap-2 px-6 py-2 rounded-sm font-bold text-[10px] uppercase tracking-[0.2em] transition-all",
+                prompt.trim() 
+                  ? "bg-ink text-white hover:bg-zinc-800" 
+                  : "bg-ink/5 text-ink/20 cursor-not-allowed"
+              )}
+            >
+              {isStarting ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <>
+                  Execute
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <div className="w-full mt-20 space-y-6">
+        <div className="flex items-center gap-4">
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-30 whitespace-nowrap">Example Protocols</span>
+          <div className="h-px bg-line w-full" />
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {examples.map((ex, i) => (
+            <button
+              key={i}
+              onClick={() => {
+                setPrompt(ex.prompt);
+                textareaRef.current?.focus();
+              }}
+              className="text-left p-5 border border-line rounded-lg hover:border-ink hover:bg-white/40 transition-all group relative overflow-hidden h-full flex flex-col justify-between"
+            >
+              <div className="opacity-40 mb-4 group-hover:opacity-100 transition-opacity">
+                {ex.icon}
+              </div>
+              <div>
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-ink mb-1">{ex.title}</h4>
+                <p className="font-serif italic text-xs leading-relaxed opacity-60 group-hover:opacity-100 transition-opacity whitespace-normal line-clamp-3">
+                  &quot;{ex.prompt}&quot;
+                </p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================================
+FILE: C:\Users\antho\Downloads\Novum\web\src\lib\errorHandlers.ts
+================================================================
+
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+  }
+}
+
+import { auth } from './firebase';
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
+
+
+================================================================
+FILE: C:\Users\antho\Downloads\Novum\web\src\lib\firebase.ts
+================================================================
+
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import firebaseConfig from '../../firebase-applet-config.json';
+
+const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const auth = getAuth(app);
+
+
+
+================================================================
+FILE: C:\Users\antho\Downloads\Novum\web\src\lib\utils.ts
+================================================================
+
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+
+
+================================================================
+FILE: C:\Users\antho\Downloads\Novum\web\src\services\geminiService.ts
+================================================================
+
+import { GoogleGenAI } from "@google/genai";
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+export async function generateResearchStep(prompt: string, context: string) {
+  const model = "gemini-3-flash-preview";
+  
+  const systemInstruction = `
+    You are an AI forensics agent part of Novum. 
+    Your goal is to apply the scientific method to hypothesize and test AI papers and systems.
+    
+    Current research goal: ${prompt}
+    
+    Context so far:
+    ${context}
+    
+    You must output exactly one research step. 
+    A step can be of type: 'hypothesis', 'test', 'reflection', or 'result'.
+    
+    Format your response as a JSON object:
+    {
+      "type": "hypothesis" | "test" | "reflection" | "result",
+      "agentName": string,
+      "content": "Markdown formatted content of the research action",
+      "findings": string[] (optional)
+    }
+  `;
+
+  try {
+    const result = await ai.models.generateContent({
+      model: model,
+      contents: "Generate the next logical step in the research process.",
+      config: {
+        systemInstruction,
+        responseMimeType: "application/json",
+      }
+    });
+
+    return JSON.parse(result.text || "{}");
+  } catch (error) {
+    console.error("Gemini Error:", error);
+    return null;
+  }
+}
+
+export async function generateThreadTitle(prompt: string) {
+  const model = "gemini-3-flash-preview";
+  try {
+    const result = await ai.models.generateContent({
+      model: model,
+      contents: `Generate a concise, 3-5 word title for a research thread about: "${prompt}"`,
+    });
+    return result.text?.trim() || "Untitled Research";
+  } catch (error) {
+    return "New Research";
+  }
+}
+
+

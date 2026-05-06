@@ -1,0 +1,48 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Firebase
+.firebase/
+*-debug.log
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+
+# Vite / Build Tooling
+.vite/
+tsconfig.tsbuildinfo
+
+# System Files
+Thumbs.db
+desktop.ini
+
+firebase-applet-config.json
+metadata.json
+# Google Cloud Service Accounts
+*-service-account.json
+service-account*.json
+key.json
+credentials.json
+# Arize / Local Tracing Data
+.phoenix/
+phoenix.db
+# Other secrets
+.runtimeconfig.json
+.flaskenv
+*.pem
+*.p12
