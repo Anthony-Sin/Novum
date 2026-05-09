@@ -1,6 +1,6 @@
 import { Settings, Plus, Archive, FileText } from 'lucide-react';
 import { cn } from '../lib/utils';
-
+import novumIcon from '../icons/novumIcon.png';
 interface SidebarProps {
   activeId?: string;
   onNew: () => void;
@@ -13,7 +13,11 @@ export default function Sidebar({ activeId, onNew, onSelect, threads }: SidebarP
     <div className="w-12 lg:w-14 group flex flex-col h-screen border-r border-line bg-beige-bg fixed left-0 top-0 z-50 transition-all duration-500 hover:lg:w-60">
       <div className="p-4 border-b border-line flex items-center justify-center lg:justify-start gap-4 overflow-hidden h-[57px]">
         <div className="w-8 h-8 flex items-center justify-center rounded-sm shrink-0">
-          <FileText className="w-5 h-5 text-ink" />
+          <img 
+            src={novumIcon} 
+            alt="Novum Icon" 
+            className="w-25 h-25 object-contain" 
+          />
         </div>
         <div className="hidden group-hover:lg:block overflow-hidden whitespace-nowrap">
           <h1 className="font-bold text-xs tracking-widest uppercase">Forensics</h1>
