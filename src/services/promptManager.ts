@@ -1,10 +1,12 @@
-﻿
+
 import path from 'path';
 import { promises as fs } from 'fs';
 import matter from 'gray-matter';
+import { fileURLToPath } from 'url';
 import { toKebabCase } from '../utils/markdownUtils.js';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Base path for scientific fraud detection prompts
+
 const PROMPTS_BASE_PATH = path.join(__dirname, '..', 'assets', 'prompts');
 
 interface PromptMetadata {
@@ -19,14 +21,10 @@ interface PromptObject {
   metadata: PromptMetadata;
 }
 
-// In-memory store for raw and resolved prompts
+
 const rawPrompts = new Map<string, PromptObject>();
 const resolvedPrompts = new Map<string, PromptObject>();
 
-/**
- * Recursively scans a directory for Markdown files containing fraud detection heuristic prompts,
- * parses them, and stores their content and metadata.
- */
 async function loadPromptsRecursive(directory: string, relativePath: string = ''): Promise<void> {
   const entries = await fs.readdir(directory, { withFileTypes: true });
 
@@ -46,29 +44,22 @@ async function loadPromptsRecursive(directory: string, relativePath: string = ''
   }
 }
 
-/**
- * Resolves placeholders in prompt content.
- * Prevents circular dependencies when building complex multi-agent reviewer prompts.
- */
-function resolvePlaceholders(content: string, visited: Set<string>): string {
+function resolvePlaceholders(content: string, stack: string[] = []): string {
   return content.replace(/\$\{([a-zA-Z0-9_\-/]+)\}/g, (match, key) => {
-    if (visited.has(key)) {
+    // 1. Check if the key is already in the current resolution path
+    if (stack.includes(key)) {
+      console.log(" DEBUG Circular Path:", [...stack, key].join(" -> "));
       throw new Error(`Circular dependency detected for prompt key: ${key}`);
     }
 
     const referencedPrompt = rawPrompts.get(key);
     if (!referencedPrompt) return match;
 
-    visited.add(key);
-    const resolvedContent = resolvePlaceholders(referencedPrompt.content, visited);
-    visited.delete(key); 
-    return resolvedContent;
+    // 2. Recurse with the current key added to the stack
+    return resolvePlaceholders(referencedPrompt.content, [...stack, key]);
   });
 }
 
-/**
- * Initializes the prompt loading and dependency resolution process.
- */
 async function initialize(): Promise<void> {
   if (resolvedPrompts.size > 0) return;
   
@@ -80,7 +71,8 @@ async function initialize(): Promise<void> {
 
   for (const [key, prompt] of resolvedPrompts.entries()) {
     try {
-      const resolvedContent = resolvePlaceholders(prompt.content, new Set([key]));
+      // CHANGE THIS LINE: Remove 'new Set([key])' and use '[key]' instead
+      const resolvedContent = resolvePlaceholders(prompt.content, [key]); 
       resolvedPrompts.set(key, { ...prompt, content: resolvedContent });
     } catch (error) {
       console.error(`Error resolving reviewer prompt '${key}':`, error);
@@ -109,16 +101,13 @@ export async function hasExpertPrompt(name: string): Promise<boolean> {
   return false;
 }
 
-/**
- * Retrieves an expert fraud analyst prompt (e.g., 'Statistical Anomaly Expert', 'Image Forensics Analyst').
- */
 export async function getExpertPrompt(name: string): Promise<{ preamble: string; temperature: number; model: string | undefined; }> {
   await ready;
   for (const [key, prompt] of resolvedPrompts.entries()) {
     if (key.startsWith('experts/') && toKebabCase(prompt.metadata.name) === toKebabCase(name)) {
       return {
         preamble: prompt.content,
-        temperature: prompt.metadata.temperature ?? 0, // Default 0 for deterministic facts
+        temperature: prompt.metadata.temperature ?? 0, 
         model: prompt.metadata.model ?? undefined, 
       };
     }
@@ -126,9 +115,6 @@ export async function getExpertPrompt(name: string): Promise<{ preamble: string;
   throw new Error(`Data Sleuth prompt with name "${name}" not found.`);
 }
 
-/**
- * Retrieves a work phase prompt representing stages of paper validation.
- */
 export async function getWorkPhasePrompt(name: string): Promise<{ preamble: string; temperature: number; model: string | undefined; tools: string | undefined }> {
   await ready;
   for (const [key, prompt] of resolvedPrompts.entries()) {
@@ -144,7 +130,7 @@ export async function getWorkPhasePrompt(name: string): Promise<{ preamble: stri
   throw new Error(`Investigation phase prompt with name "${name}" not found.`);
 }
 
-export async function getTooInstructionPrompt(name: string): Promise<string> {
+export async function getToolInstructionPrompt(name: string): Promise<string> {
   await ready;
   for (const [key, prompt] of resolvedPrompts.entries()) {
     if (key.startsWith('tool-instructions/') && toKebabCase(prompt.metadata.name) === toKebabCase(name)) {
@@ -189,3 +175,4 @@ export const _internal = {
     resolvedPrompts.clear();
   },
 };
+

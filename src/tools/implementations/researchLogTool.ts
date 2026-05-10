@@ -1,8 +1,8 @@
 
 
-import { logFilename } from "../../config/config";
-import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from "../../momoa_core/types";
-import { MultiAgentTool } from "../multiAgentTool";
+import { logFilename } from "../../config/config.js";
+import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from "../../novum_core/types.js";
+import { MultiAgentTool } from "../multiAgentTool.js";
 
 
 export const researchLogTool: MultiAgentTool = {
@@ -20,23 +20,23 @@ export const researchLogTool: MultiAgentTool = {
     let trimmed = entry.trim();
 
     if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-        // Slice from index 1 to the second-to-last character
+        
         trimmed = trimmed.slice(1, -1).trim();
     }
 
-    // Get current time/date in a readable format
+    
     const timestamp = new Date().toLocaleString('en-US', { timeZone: 'UTC' });
     const formattedEntry = `## [${timestamp} UTC]\n${trimmed}\n\n----\n\n`;
 
-    // Retrieve existing content or start fresh
+    
     const existingContent = context.fileMap.get(logFilename) ?? "";
     const updatedContent = (formattedEntry + existingContent).trim();
 
-    // Update the in-memory file map
+    
     context.fileMap.set(logFilename, updatedContent);
     context.editedFilesSet.add(logFilename);
 
-    // Sync to disk if saveFiles is enabled
+    
     if (context.saveFiles) {
       context.sendMessage(JSON.stringify({
         status: 'APPLY_FILE_CHANGE',
@@ -49,7 +49,7 @@ export const researchLogTool: MultiAgentTool = {
 
     const successMsg = `Appended Research Log entry to \`${logFilename}\`\n\`\`\`\`\n${trimmed}\n\`\`\`\``;
     
-    // Log to the work log for visibility
+    
     context.sendMessage(JSON.stringify({
       status: 'WORK_LOG',
       message: successMsg,
@@ -72,3 +72,4 @@ export const researchLogTool: MultiAgentTool = {
     return { success: false, error: "Log entry cannot be empty." };
   }
 };
+

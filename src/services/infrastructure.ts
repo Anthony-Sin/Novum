@@ -1,10 +1,10 @@
-﻿
+
 import { randomUUID } from 'crypto';
-import { InfrastructureContext } from '../momoa_core/types.js';
+import { InfrastructureContext } from '../novum_core/types.js';
 
 export class ConcreteInfrastructureContext implements InfrastructureContext {
   getToolNames(): string[] {
-    // Expose specific integrity-checking tools to the orchestrator
+    
     return ['VerifyDOI', 'ImageManipulationDetector', 'StatSleuth', 'CheckPlagiarismDB'];
   }
 
@@ -17,7 +17,7 @@ export class ConcreteInfrastructureContext implements InfrastructureContext {
   }
 
   async getAssetString(name: string): Promise<string> {
-    // Placeholder. In production, this pulls known fraudulent paper identifiers.
+    
     console.warn(`Asset '${name}' not found. Returning empty string.`);
     return '';
   }
@@ -26,3 +26,4 @@ export class ConcreteInfrastructureContext implements InfrastructureContext {
     return randomUUID().toString();
   }
 }
+

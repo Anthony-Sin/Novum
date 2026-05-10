@@ -1,11 +1,11 @@
 
 
 import { MultiAgentTool } from '../multiAgentTool.js';
-import { fileNameLookup } from '../../utils/fileNameLookup.js';
-import { addDynamicallyRelevantFile, getFileAnalysis, updateFileEntry } from '../../utils/fileAnalysis.js';
-import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../momoa_core/types.js';
+import { paperLookup } from '../../utils/paperLookup.js';
+import { addDynamicallyRelevantDocument, getPaperAnalysis, updatePaperEntry } from '../../utils/paperAnalysis.js';
+import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../novum_core/types.js';
 import { getAssetString } from '../../services/promptManager.js';
-import { isLockFile, getLockFileHiddenPlaceholder } from '../../utils/diffGenerator.js';
+import { isLockFile, getLockFileHiddenPlaceholder } from '../../utils/paperVersionDiff.js';
 
 
 export const fileReaderTool: MultiAgentTool = {
@@ -23,18 +23,18 @@ export const fileReaderTool: MultiAgentTool = {
       };
     }
 
-    // Combine keys from both maps for a comprehensive lookup.
+    
     const allFilesMap = new Map<string, string>([
       ...context.fileMap,
       ...Array.from(context.binaryFileMap.keys()).map(key => [key, ''] as [string, string])
     ]);
 
-    // const filename = await fileNameLookup(providedFilename, allFilesMap, context.multiAgentGeminiClient);
+    
     let filename = providedFilename.trim();
     
     if (!allFilesMap.has(filename)) {
-        // File not found. NOW, let's try to find a suggestion.
-        const suggestion = await fileNameLookup(filename, allFilesMap, context.multiAgentGeminiClient);
+        
+        const suggestion = await paperLookup(filename, allFilesMap, context.multiAgentGeminiClient);
 
         if (suggestion && suggestion !== filename && allFilesMap.has(suggestion)) {
             return {
@@ -47,7 +47,7 @@ export const fileReaderTool: MultiAgentTool = {
         };
     }
 
-    addDynamicallyRelevantFile(filename);
+    addDynamicallyRelevantDocument(filename);
 
     context.sendMessage(JSON.stringify({
         status: "PROGRESS_UPDATES",
@@ -59,14 +59,14 @@ export const fileReaderTool: MultiAgentTool = {
     const suffix = await getAssetString('file-content-suffix');
     const replacementString = await getAssetString('file-content-removed');
 
-    // Handle binary files (Images, PDFs, Audio, Video)
+    
     if (context.binaryFileMap.has(filename)) {
       const mimeType = getBinaryMimeType(filename);
       
       if (mimeType) {
         const base64Data = context.binaryFileMap.get(filename);
         if (base64Data) {
-          // Determine the label based on the MIME type category
+          
           if (mimeType.startsWith('text/')) {
             const trimmedContent = base64Data.slice(0, 10000);
             const explainString = `---File '${filename}' exists but is too large to be added to the chat history. Providing only the first 10,000 characters.---`;
@@ -113,7 +113,7 @@ export const fileReaderTool: MultiAgentTool = {
       };
     }
 
-    // Handle "Secret Files"
+    
     if (context.fileMap.has(filename) && filename.startsWith('SECRET__')) {
       const noSecrets = `---File '${filename}' exists but this tool can't share the contents of SECRET files---`;
       return {
@@ -123,7 +123,7 @@ export const fileReaderTool: MultiAgentTool = {
       };
     }
 
-    // Handle Lock Files
+    
     if (isLockFile(filename)) {
          const placeholder = getLockFileHiddenPlaceholder(filename);
          return {
@@ -143,9 +143,9 @@ export const fileReaderTool: MultiAgentTool = {
       };
 
     try {
-      const fileAnalysis = getFileAnalysis(filename);
+      const fileAnalysis = getPaperAnalysis(filename);
       if (!fileAnalysis?.description)
-        await updateFileEntry(filename, context.fileMap, context.multiAgentGeminiClient);
+        await updatePaperEntry(filename, context.fileMap, context.multiAgentGeminiClient);
     } catch {}
 
     return {
@@ -178,7 +178,7 @@ export const fileReaderTool: MultiAgentTool = {
 function getBinaryMimeType(filename: string): string | null {
     const ext = filename.split('.').pop()?.toLowerCase();
     switch (ext) {
-        // Images
+        
         case 'png': return 'image/png';
         case 'jpg':
         case 'jpeg': return 'image/jpeg';
@@ -186,10 +186,10 @@ function getBinaryMimeType(filename: string): string | null {
         case 'heic': return 'image/heic';
         case 'heif': return 'image/heif';
         
-        // Documents
+        
         case 'pdf': return 'application/pdf';
 
-        // Audio
+        
         case 'wav': return 'audio/wav';
         case 'mp3': return 'audio/mp3';
         case 'aiff': return 'audio/aiff';
@@ -197,7 +197,7 @@ function getBinaryMimeType(filename: string): string | null {
         case 'ogg': return 'audio/ogg';
         case 'flac': return 'audio/flac';
 
-        // Video
+        
         case 'mp4': return 'video/mp4';
         case 'mpeg':
         case 'mpg': return 'video/mpeg';
@@ -208,7 +208,7 @@ function getBinaryMimeType(filename: string): string | null {
         case 'wmv': return 'video/wmv';
         case '3gpp': return 'video/3gpp';
 
-        // Text files
+        
         case 'txt':
         case 'csv':
         case 'tsv':
@@ -217,3 +217,5 @@ function getBinaryMimeType(filename: string): string | null {
         default: return null;
     }
 }
+
+

@@ -1,9 +1,9 @@
 
 
 import { MultiAgentTool } from '../multiAgentTool.js';
-import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../momoa_core/types.js';
+import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../novum_core/types.js';
 import { DEFAULT_GEMINI_PRO_MODEL } from '../../config/models.js';
-import { removeBacktickFences, getFilesAndContent } from '../../utils/markdownUtils.js';
+import { removeBacktickFences, getDocumentsAndContent } from '../../utils/markdownUtils.js';
 
 const BIASAUDIT_SYSTEM_PROMPT = `You are the Scientific Integrity Overseer — an architecturally independent auditor
 of a research fraud detection system. Your job is to review the investigation worklog and assess
@@ -80,7 +80,7 @@ export const biasAuditTool: MultiAgentTool = {
         } catch (_) {}
       }
 
-      const worklogContent = await getFilesAndContent(requestedFiles, context);
+      const worklogContent = await getDocumentsAndContent(requestedFiles.map(f => ({ FILENAME: f, DESCRIPTION: '' })), context);
 
       const overseerLog = context.overseer ? (context.overseer as any).getLog?.() ?? '' : '';
 
@@ -110,13 +110,13 @@ Output ONLY the JSON object — no prose, no markdown fences.`;
       let rawResult = response?.text || '';
       rawResult = removeBacktickFences(rawResult).trim();
 
-      // Extract JSON from the response
+      
       let parsedResult: any = null;
       try {
-        // Try direct parse first
+        
         parsedResult = JSON.parse(rawResult);
       } catch (_) {
-        // Try to extract JSON from within the response
+        
         const jsonMatch = rawResult.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           try { parsedResult = JSON.parse(jsonMatch[0]); } catch (_) {}
@@ -124,7 +124,7 @@ Output ONLY the JSON object — no prose, no markdown fences.`;
       }
 
       if (!parsedResult) {
-        // Fallback structure if JSON parse fails
+        
         parsedResult = {
           assessment: "BIASAUDIT could not parse a structured response from the LLM.",
           bias_scores: { selective_skepticism: 5, premature_closure_risk: 5, missing_adversarial_checks: 5, framing_bias: 5, overweighting_author_narrative: 5 },
@@ -135,12 +135,12 @@ Output ONLY the JSON object — no prose, no markdown fences.`;
         };
       }
 
-      // Apply overseer signal if available
+      
       if (context.overseer && parsedResult.action) {
         const action = parsedResult.action as string;
         const guidance = parsedResult.guidance as string;
         if (action === 'RESTART') {
-          (context.overseer as any).forceRestart?.(guidance, 'BIASAUDIT triggered RESTART due to critical confirmation bias');
+          context.overseer?.forceRestart?.(guidance, 'BIASAUDIT triggered RESTART due to critical confirmation bias');
         } else if (action === 'GUIDE') {
           await updateLog(`BIASAUDIT GUIDE signal: ${guidance}`);
         } else if (action === 'ABANDON') {
@@ -192,4 +192,6 @@ ${JSON.stringify(parsedResult, null, 2)}
     };
   }
 };
+
+
 

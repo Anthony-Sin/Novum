@@ -1,17 +1,17 @@
 
 
 import { MultiAgentTool } from '../multiAgentTool.js';
-import { fileNameLookup } from '../../utils/fileNameLookup.js';
+import { paperLookup } from '../../utils/paperLookup.js';
 import { fileReaderTool } from './fileReaderTool.js';
-import { addDynamicallyRelevantFile, removeFileEntry, updateFileEntry } from '../../utils/fileAnalysis.js';
-import { FileOperation, MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../momoa_core/types.js';
+import { addDynamicallyRelevantDocument, removePaperEntry, updatePaperEntry } from '../../utils/paperAnalysis.js';
+import { FileOperation, MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../novum_core/types.js';
 import { getAssetString, getToolPreamblePrompt, replaceRuntimePlaceholders } from '../../services/promptManager.js';
 import { DEFAULT_GEMINI_FLASH_MODEL, DEFAULT_GEMINI_LITE_MODEL } from '../../config/models.js';
 import { removeBacktickFences } from '../../utils/markdownUtils.js';
 import { TranscriptManager } from '../../services/transcriptManager.js';
-import { fuzzyReplace } from '../../utils/fuzzyStringReplacer.js';
+import { fuzzyReplace } from '../../utils/textSimilarity.js';
 import { updateDiffInAllTranscripts } from './revertFileTool.js';
-import { isLockFile } from '../../utils/diffGenerator.js';
+import { isLockFile } from '../../utils/paperVersionDiff.js';
 import { createTwoFilesPatch } from 'diff';
 import { logFilename } from '../../config/config.js';
 
@@ -28,7 +28,7 @@ export const smartFileEditorTool: MultiAgentTool = {
   
   async execute(params: Record<string, string>, context: MultiAgentToolContext): Promise<MultiAgentToolResult> {
 
-    // Define updateLog inside execute to ensure context is in scope
+    
     const updateLog = async (message: string, updateOverseerLog: boolean = true) => {
       context.sendMessage(JSON.stringify({
         status: 'WORK_LOG',
@@ -43,7 +43,7 @@ export const smartFileEditorTool: MultiAgentTool = {
     const originalEditRequest = params.editRequest;
 
     if (filename) {
-      addDynamicallyRelevantFile(filename);
+      addDynamicallyRelevantDocument(filename);
     }
 
     if (!filename || !originalEditRequest)
@@ -56,12 +56,12 @@ export const smartFileEditorTool: MultiAgentTool = {
     const parameterExtractionResult = await extractEditRequestParameters(originalEditRequest);
     const syntaxIssues = (parameterExtractionResult).success ? "--No issues have yet been identified with the request--" : parameterExtractionResult.error;
 
-    // Capture the original content at the beginning of the execute method
+    
     const isBinary = context.binaryFileMap.has(filename);
     const originalFileContent = isBinary ? `[Binary File: ${filename}]` : (context.fileMap.get(filename) ?? null);
     context.editedFilesSet.add(filename);
 
-    // History String
+    
     const chatHistoryString = await (async () => {
       const historyString = context.transcriptForContext.getTranscriptAsString(true, context.experts);
       
@@ -74,7 +74,7 @@ export const smartFileEditorTool: MultiAgentTool = {
           { model: DEFAULT_GEMINI_LITE_MODEL } 
         ))?.text?.trim() || "";
     
-        // Clean the LLM's response.
+        
         return removeBacktickFences(llmSummarizedHistory);
       }
       return '--No Chat History Available--';
@@ -106,37 +106,37 @@ export const smartFileEditorTool: MultiAgentTool = {
       completed_status_message: `Editing \`${filename}\``,
     }));
 
-    // Attempt the edit directly first. The LLM loop is now a fallback.
+    
     if (parameterExtractionResult.success) {
-      // Attempt the edit directly. editFile() will log its own detailed results.
+      
       const editResultString = editFile(
         filename,
-        String(parameterExtractionResult.params.toReplaceString), // TODO: handling of string[]
-        String(parameterExtractionResult.params.replacementString), // TODO: handling of string[]
+        String(parameterExtractionResult.params.toReplaceString), 
+        String(parameterExtractionResult.params.replacementString), 
         context
       );
 
-      // Check if the edit failed (e.g., "not found", "multiple matches")
-      // These keywords are from the error strings returned by editFile/fuzzyReplace
+      
+      
       const editFailed = editResultString.includes('failed') || 
                          editResultString.includes("doesn't exist") || 
                          editResultString.includes('potential matches');
 
       if (editFailed) {
-        // The edit failed. The reason is in editResultString (and was logged by editFile).
-        // Pass this error to the internal LLM loop so it can try to fix it.
+        
+        
         transcriptManager.addEntry('user', editResultString, { documentId: filename, replacementIfSuperseded: '---FILE CONTENT INTENTIONALLY REMOVED---'});
         await updateLog(`###Smart Editor: Initial edit failed. Handing over to internal LLM for correction.`);
         
       } else {
-        // The edit SUCCEEDED. We skip the LLM loop.
+        
         done = true;
         smartEditorResult = editResultString; 
       }
 
     } else {
-      // Syntax was bad from the start, so we let the LLM loop handle it.
-      // The original `smartEditorPreamble` already contains the syntax error.
+      
+      
       await updateLog(`###Smart Editor: Initial syntax check failed. Handing over to internal LLM for correction.`);
     }
 
@@ -147,7 +147,7 @@ export const smartFileEditorTool: MultiAgentTool = {
       if (context.signal?.aborted) {
         await updateLog('Received abort signal. Cancelling edit.');
 
-        // Perform any immediate cleanup here if necessary before breaking
+        
         smartEditorResult = `${this.displayName} tool has been cancelled by the user.`;
         done = true;
         break; 
@@ -173,7 +173,7 @@ export const smartFileEditorTool: MultiAgentTool = {
         await updateLog(`Hard turn limit reached. Aborting edit.`);
       }
 
-      // Next LLM Turn
+      
       const smartEditorResponse = await context.multiAgentGeminiClient.sendTranscriptMessage(
         transcriptManager,
         {
@@ -186,15 +186,15 @@ export const smartFileEditorTool: MultiAgentTool = {
 
       await updateLog(`###Smart Editor response:\n${smartEditorResponseText}`);
 
-      // 1. Check for empty response.
+      
       if (!smartEditorResponseText) {
         await updateLog(`###Smart Editor: Empty Response.`);
         transcriptManager.addEntry('user', `I was unable to understand your last response. Please try again and respond only with text. (No files were edited).`);
         continue;
       }
 
-      // 2. Check for Tool Invocations
-      // 2.1 Edit Request
+      
+      
       if (/^\u0040DOC\/EDIT{/m.test(smartEditorResponseText)) {
         await updateLog(`###Smart Editor attempting an edit`);
 
@@ -234,7 +234,7 @@ export const smartFileEditorTool: MultiAgentTool = {
         }
       }
 
-      // 2.2 Revert Edits
+      
       if (/^\u0040REVERT_FILE/m.test(smartEditorResponseText)) {
         await updateLog(`Reverting edits...`);
         let revertedString = `You requested to revert the content of '${filename}' but there isn't an earlier version available.`;
@@ -252,7 +252,7 @@ export const smartFileEditorTool: MultiAgentTool = {
         continue;
       }
 
-      // 2.3 Read Files
+      
       if (/^\u0040DOC\/READ{/m.test(smartEditorResponseText)) {
 
         const regex = /^\u0040DOC\/READ{(.*)/sim;
@@ -270,7 +270,7 @@ export const smartFileEditorTool: MultiAgentTool = {
         }
       }
 
-      // 3. Check for \u0040RETURN
+      
       if (/^\u0040RETURN/m.test(smartEditorResponseText)) {
         await updateLog(`Smart Editor Finished`);
         done = true;
@@ -283,7 +283,7 @@ export const smartFileEditorTool: MultiAgentTool = {
         break;
       }
 
-      // 4. Not a tool or result
+      
       transcriptManager.addEntry('user', `Your response didn't use a tool or try to return a response. Please try again. No files were changed.`);
       await updateLog(`Smart Editor response didn't use a tool or try to return a response.`);
     }
@@ -295,13 +295,13 @@ export const smartFileEditorTool: MultiAgentTool = {
     if (!context.originalFilesSet.has(filename))
       fileOperation = FileOperation.Create;
     
-    // Check if the file (of any type) was deleted
+    
     if (context.originalFilesSet.has(filename) && !context.fileMap.has(filename) && !context.binaryFileMap.has(filename)) {
       deleteFile(filename, context);
       fileOperation = FileOperation.Delete;
     } else if (context.fileMap.has(filename)) {
-      // Only run analysis on text files
-      await updateFileEntry(filename, context.fileMap, context.multiAgentGeminiClient);
+      
+      await updatePaperEntry(filename, context.fileMap, context.multiAgentGeminiClient);
     }
 
     let operationVerb = "editing";
@@ -376,9 +376,9 @@ export const smartFileEditorTool: MultiAgentTool = {
       }
     }
 
-    // Truncate the invocation string at the endToken to ignore trailing characters (like '}')
-    // This ensures the strict validation check below passes even if the LLM adds closing braces after the token.
-    const endTokenIndex = invocation.lastIndexOf("END\u005fEDIT");
+    
+    
+    const endTokenIndex = invocation.indexOf("END\u005fEDIT");
     if (endTokenIndex !== -1) {
       invocation = invocation.substring(0, endTokenIndex + "END\u005fEDIT".length);
     }
@@ -395,7 +395,7 @@ export const smartFileEditorTool: MultiAgentTool = {
     let filename;
     let isUnambiguousCreate = false;
 
-    // We need to do a lightweight parse to find the agent's intent
+    
     const toReplaceStart = `TO\u005fREPLACE:{`;
     const toReplaceEnd = `}\nNEW\u005fTEXT`;
     const replacementTextStart = `\nNEW\u005fTEXT:{`;
@@ -415,18 +415,18 @@ export const smartFileEditorTool: MultiAgentTool = {
         }
     }
     
-    // Combine all file keys for a comprehensive lookup.
+    
     const allFilesMap = new Map<string, string>([
         ...context.fileMap,
         ...Array.from(context.binaryFileMap.keys()).map(key => [key, ''] as [string, string])
     ]);
 
     if (isUnambiguousCreate) {
-        // This is a CREATE or OVERWRITE. The file does not need to exist.
+        
         filename = extractedFilename;
     } else {
-        // This is an EDIT or a DELETE/CREATE_EMPTY. We *must* check for typos.
-        filename = await fileNameLookup(extractedFilename, allFilesMap, context.multiAgentGeminiClient);
+        
+        filename = await paperLookup(extractedFilename, allFilesMap, context.multiAgentGeminiClient);
     }
 
     return {
@@ -442,7 +442,7 @@ export const smartFileEditorTool: MultiAgentTool = {
 function deleteFile(filename: string, context: MultiAgentToolContext) {
   context.fileMap.delete(filename);
   context.binaryFileMap.delete(filename);
-  removeFileEntry(filename);
+  removePaperEntry(filename);
 }
 
 async function extractEditRequestParameters(stringToParse: string): Promise<ToolParsingResult> {
@@ -490,7 +490,7 @@ function editFile(filename: string, fromString: string, toString: string, contex
   const isAppend = fromString.trim() === 'APPEND';
   const isEmptyReplace = fromString.trim() === '';
 
-  // Handle binary file logic first
+  
   if (isBinary) {
     if (isOverwrite && !toString) {
         context.binaryFileMap.delete(filename);
@@ -502,7 +502,7 @@ function editFile(filename: string, fromString: string, toString: string, contex
     }
     worklog = result;
   } else if (isEmptyReplace) {
-    // Explicitly block the old empty bracket loophole to prevent accidental deletions/overwrites
+    
     result = `The attempted edit of '${filename}' failed because TO_REPLACE was empty. To overwrite or delete a file, you must explicitly use TO_REPLACE:{OVERWRITE_ENTIRE_FILE}. To append to the end of a file, use TO_REPLACE:{APPEND}.`;
     progressUpdate = result;
     worklog = result;
@@ -512,7 +512,7 @@ function editFile(filename: string, fromString: string, toString: string, contex
         result = `'${filename}' has been successfully deleted.`;
         progressUpdate = result;
     } else {
-        // CREATE OR OVERWRITE
+        
         if (isLock && fileExists) {
              result = `The attempted edit of '${filename}' failed because it is a machine-generated lock file. Manual edits to existing lock files are prohibited.`;
              progressUpdate = result;
@@ -530,7 +530,7 @@ function editFile(filename: string, fromString: string, toString: string, contex
       worklog = result;
     } else {
       const existingFileContent = context.fileMap.get(filename) || '';
-      // Only add a newline if the file already has content
+      
       const newContent = existingFileContent ? `${existingFileContent}\n${toString}` : toString;
       context.fileMap.set(filename, newContent);
       result = `Successfully appended new text to the end of \`${filename}\`.`;
@@ -616,3 +616,4 @@ function editFile(filename: string, fromString: string, toString: string, contex
 
   return result;
 };
+

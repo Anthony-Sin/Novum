@@ -10,7 +10,7 @@ import {
 } from "../services/contentGenerator.js";
 import { GeminiClient } from "../services/geminiClient.js";
 import { ApiPolicyManager } from "../services/apiPolicyManager.js";
-import { InfrastructureContext } from "../momoa_core/types.js";
+import { InfrastructureContext } from "../novum_core/types.js";
 import { getAssetString } from "../services/promptManager.js";
 import { getToolNames } from "../tools/multiAgentToolRegistry.js";
 
@@ -32,8 +32,8 @@ export interface ConfigParameters {
   };
   cwd: string;
   model: string;
-  maxTurns?: number; // Added maxTurns
-  assumptions?: string; // Added assumptions
+  maxTurns?: number; 
+  assumptions?: string; 
 }
 
 export class Config implements InfrastructureContext {
@@ -47,8 +47,8 @@ export class Config implements InfrastructureContext {
   private readonly excludeTools: string[] | undefined;
   private geminiClient!: GeminiClient;
   private readonly model: string;
-  private readonly maxTurns?: number; // Initialized from params.maxTurns
-  private readonly assumptions?: string; // Initialized from params.assumptions
+  private readonly maxTurns?: number; 
+  private readonly assumptions?: string; 
   private modelSwitchedDuringSession: boolean = false;
   flashFallbackHandler?: FlashFallbackHandler;
   apiKey = '';
@@ -62,8 +62,8 @@ export class Config implements InfrastructureContext {
     this.question = params.question;
     this.fullContext = params.fullContext ?? false;
     this.model = params.model;
-    this.maxTurns = params.maxTurns; // Initialize maxTurns from params
-    this.assumptions = params.assumptions; // Initialize assumptions from params
+    this.maxTurns = params.maxTurns; 
+    this.assumptions = params.assumptions; 
   }
 
   async refreshAuth(authMethod: AuthType, options?: Record<string, string>) {
@@ -77,7 +77,7 @@ export class Config implements InfrastructureContext {
     const apiPolicyManager = new ApiPolicyManager();
     this.geminiClient = new GeminiClient(this, apiPolicyManager);
 
-    // Reset the session flag since we're explicitly changing auth and using default model
+    
     this.modelSwitchedDuringSession = false;
   }
 
@@ -106,7 +106,7 @@ export class Config implements InfrastructureContext {
 
   resetModelToDefault(): void {
     if (this.contentGeneratorConfig) {
-      this.contentGeneratorConfig.model = this.model; // Reset to the original default model
+      this.contentGeneratorConfig.model = this.model; 
       this.modelSwitchedDuringSession = false;
     }
   }
@@ -150,7 +150,7 @@ export class Config implements InfrastructureContext {
     return this.assumptions;
   }
   
-  // Implementation of InfrastructureContext
+  
   getToolNames(): string[] {
     const registryTools = getToolNames();
     const configuredTools = this.coreTools || [];
@@ -176,13 +176,14 @@ export {
   DEFAULT_GEMINI_EMBEDDING_MODEL,
 };
 
-// universal session config and secret
+
 export const CONFIG_KEY_REPO_URL = "repoUrl";
 export const SECRET_KEY_GITHUB_TOKEN = "githubToken";
 
-// Reserved file names
+
 export const logFilename = 'RESEARCH_LOG.md';
 
 export const MAX_MEM_PERCENTAGE = 0.85;
 
 export const MAX_SCRIPT_EXECUTION_TIMEOUT = 15 * 60 * 1000;
+

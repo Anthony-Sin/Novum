@@ -1,9 +1,9 @@
 
 
 import { MultiAgentTool } from '../multiAgentTool.js';
-import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../momoa_core/types.js';
+import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../novum_core/types.js';
 import { DEFAULT_GEMINI_PRO_MODEL, DEFAULT_GEMINI_LITE_MODEL } from '../../config/models.js';
-import { removeBacktickFences, getFilesAndContent } from '../../utils/markdownUtils.js';
+import { removeBacktickFences, getDocumentsAndContent } from '../../utils/markdownUtils.js';
 import { getAssetString, replaceRuntimePlaceholders } from '../../services/promptManager.js';
 import { Part } from '@google/genai';
 
@@ -77,7 +77,7 @@ export const safetyScanTool: MultiAgentTool = {
         } catch (_) {}
       }
 
-      const fileContent = await getFilesAndContent(requestedFiles, context);
+      const fileContent = await getDocumentsAndContent(requestedFiles.map(f => ({ FILENAME: f, DESCRIPTION: '' })), context);
 
       const fullPrompt = `${SAFETYSCAN_SYSTEM_PROMPT}
 
@@ -98,7 +98,7 @@ every p-value ending must be scrutinized. Produce the complete Anomaly Signal Re
         parts.push({ inlineData: { mimeType: context.initialImageMimeType, data: context.initialImage } });
       }
 
-      // Attach any image files for visual inspection
+      
       const imageExts = new Set(['png', 'jpg', 'jpeg', 'webp', 'tiff', 'tif']);
       for (const filename of requestedFiles) {
         if (context.binaryFileMap.has(filename)) {
@@ -166,4 +166,5 @@ every p-value ending must be scrutinized. Produce the complete Anomaly Signal Re
     };
   }
 };
+
 

@@ -1,8 +1,8 @@
 
 
 import { MultiAgentTool } from '../multiAgentTool.js';
-import { addFAQ } from '../../utils/faqs.js';
-import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../momoa_core/types.js';
+import { addFinding } from '../../utils/investigationFAQs.js';
+import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../novum_core/types.js';
 import { DEFAULT_GEMINI_FLASH_MODEL, DEFAULT_GEMINI_LITE_MODEL, DEFAULT_GEMINI_PRO_MODEL } from '../../config/models.js';
 import { removeBacktickFences } from '../../utils/markdownUtils.js';
 import { getAssetString, replaceRuntimePlaceholders } from '../../services/promptManager.js';
@@ -166,7 +166,7 @@ Be adversarial — flag absences of required documentation as findings, not as neu
     } catch (_) {}
 
     context.sendMessage(JSON.stringify({ status: "PROGRESS_UPDATES", completed_status_message: summary }));
-    await addFAQ(question, result, context);
+    await addFinding(question, result, context);
     return { result: fullResult };
   },
 
@@ -176,4 +176,5 @@ Be adversarial — flag absences of required documentation as findings, not as neu
     return { success: false, error: `FACTFINDER requires a research question about preregistration, provenance, or publication ethics.` };
   }
 };
+
 

@@ -1,11 +1,11 @@
 
 
 import { MultiAgentTool } from '../multiAgentTool.js';
-import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../momoa_core/types.js';
-import { fileNameLookup } from '../../utils/fileNameLookup.js';
-import { generateDiffString, isLockFile, getLockFileHiddenPlaceholder } from '../../utils/diffGenerator.js'; // UPDATED IMPORT
+import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../novum_core/types.js';
+import { paperLookup } from '../../utils/paperLookup.js';
+import { generatePaperDiffReport, isLockFile, getLockFileHiddenPlaceholder } from '../../utils/paperVersionDiff.js';
 import { getAssetString } from '../../services/promptManager.js';
-import { updateFileEntry } from '../../utils/fileAnalysis.js';
+import { updateFileEntry } from '../../utils/paperAnalysis.js';
 
 
 export async function updateDiffInAllTranscripts(context: MultiAgentToolContext) {
@@ -15,7 +15,7 @@ export async function updateDiffInAllTranscripts(context: MultiAgentToolContext)
     return;
   }
 
-  const newDiffBlock = generateDiffString(context);
+  const newDiffBlock = generatePaperDiffReport(context, true);
 
   context.transcriptsToUpdate.forEach(transcript => {
     transcript.replaceEntry(docId, newDiffBlock);
@@ -41,12 +41,12 @@ export const revertFileTool: MultiAgentTool = {
       return { result: "Error: Orchestrator did not provide original file maps to context." };
     }
 
-    // Use fileNameLookup to find the precise file name
+    
     const allFilesMap = new Map<string, string>([
       ...context.fileMap,
       ...Array.from(context.binaryFileMap.keys()).map(key => [key, ''] as [string, string])
     ]);
-    const filename = await fileNameLookup(providedFilename, allFilesMap, context.multiAgentGeminiClient);
+    const filename = await paperLookup(providedFilename, allFilesMap, context.multiAgentGeminiClient);
 
     const originalExisted = context.originalFileMap.has(filename) || context.originalBinaryFileMap.has(filename);
     const currentExisted = context.fileMap.has(filename) || context.binaryFileMap.has(filename);
@@ -56,53 +56,53 @@ export const revertFileTool: MultiAgentTool = {
     let finalContent: string | null | undefined = undefined;
     let isBinary = false;
 
-    // Case 1: Revert text file (it existed originally)
+    
     if (context.originalFileMap.has(filename)) {
       const originalContent = context.originalFileMap.get(filename)!;
       context.fileMap.set(filename, originalContent);
-      context.binaryFileMap.delete(filename); // Clean up just in case
-      // We will remove from editedFilesSet *after* updating transcripts
+      context.binaryFileMap.delete(filename); 
+      
       revertMessage = `---File '${filename}' has been successfully reverted to its original state.---`;
       revertSucceeded = true;
       finalContent = originalContent;
       isBinary = false;
     }
-    // Case 2: Revert binary file (it existed originally)
+    
     else if (context.originalBinaryFileMap.has(filename)) {
       const originalContent = context.originalBinaryFileMap.get(filename)!;
       context.binaryFileMap.set(filename, originalContent);
-      context.fileMap.delete(filename); // Clean up just in case
-      // We will remove from editedFilesSet *after* updating transcripts
+      context.fileMap.delete(filename); 
+      
       revertMessage = `---File '${filename}' has been successfully reverted to its original state.---`;
       revertSucceeded = true;
       finalContent = null;
       isBinary = true;
     }
-    // Case 3: File was created (didn't exist originally), so "reverting" means deleting it.
+    
     else if (!originalExisted && currentExisted) {
       context.fileMap.delete(filename);
       context.binaryFileMap.delete(filename);
-      // We will remove from editedFilesSet *after* updating transcripts
+      
       revertMessage = `---File '${filename}' was created during this run and has been successfully deleted (reverted).---`;
       revertSucceeded = true;
-      finalContent = undefined; // Flag for deleted
+      finalContent = undefined; 
       isBinary = false;
     }
-    // Case 4: File doesn't exist now and didn't exist originally
+    
     else if (!originalExisted && !currentExisted) {
       revertMessage = `---Error: Could not revert '${filename}'. It was not found in the current project or the original project state.---`;
     }
 
-    // If a revert or deletion succeeded, update all transcripts
+    
     if (revertSucceeded) {
       context.sendMessage(JSON.stringify({
           status: "PROGRESS_UPDATES",
           completed_status_message: `Undoing changes to \`${filename}\`, and reverting it to its original content.`,
       }));
 
-      // If the file was not deleted, force a re-analysis
-      // to update its description and remove any "---DELETED---" markers.
-      if (finalContent !== undefined) { // undefined means it was deleted
+      
+      
+      if (finalContent !== undefined) { 
         try {
           if (!context.binaryFileMap.has(filename)) {
             await updateFileEntry(filename, context.fileMap, context.multiAgentGeminiClient);
@@ -119,27 +119,27 @@ export const revertFileTool: MultiAgentTool = {
         }
       }
 
-      // Immediately supersede this file's entry in all transcripts
-      // (WorkPhase experts + Orchestrator) *before* removing from the set.
+      
+      
       context.transcriptsToUpdate?.forEach(transcript => {
         transcript.supersedeEntry(filename);
       });
       
-      // Now that transcripts are updated, remove it from the set.
+      
       context.editedFilesSet.delete(filename);
     }
 
-    // Always update the diff block in all transcripts
+    
     await updateDiffInAllTranscripts(context);
 
-    // --- Format Return Value ---
+    
     const prefix = await getAssetString('file-content-prefix');
     const suffix = await getAssetString('file-content-suffix');
     const replacementString = await getAssetString('file-content-removed');
     
     if (!revertSucceeded) {
-      // Return the error message, but still provide the ID/replacement
-      // so the WorkPhase supersedes any *previous* read of this file.
+      
+      
       return {
         result: revertMessage,
         transcriptReplacementID: filename,
@@ -147,9 +147,9 @@ export const revertFileTool: MultiAgentTool = {
       };
     }
 
-    // Build the final result string
+    
     let finalResultString = revertMessage;
-    if (finalContent !== undefined) { // File exists post-revert
+    if (finalContent !== undefined) { 
       if (isBinary) {
         finalResultString += `\nFile '${filename}' is a binary file.`;
       } else if (isLockFile(filename)) { 
@@ -181,3 +181,4 @@ export const revertFileTool: MultiAgentTool = {
     }
   }
 };
+

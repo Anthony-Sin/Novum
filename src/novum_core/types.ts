@@ -1,8 +1,13 @@
-﻿
+
 import { GeminiClient } from '../services/geminiClient.js';
 import { TranscriptManager } from '../services/transcriptManager.js';
 import { UserSecrets } from '../shared/model.js';
 import { Overseer } from './overseer.js';
+export interface ResearchFinding {
+  question:  string;
+  answer:    string;
+  flaggedAt: Date;
+}
 
 export interface FileContent {
   path: string;
@@ -188,7 +193,7 @@ export interface ProjectAnalysisResult {
   spec: string;
 }
 
-// Tool names required for the client-side ReAct implementation
+
 export const READ_FILES_TOOL_NAME = 'read_file';
 export const MODIFY_SPEC_TOOL_NAME = 'modify_spec';
 
@@ -208,3 +213,4 @@ export interface GeminiClientConfig {
 export interface TranscriptManagerConfig {
   context: InfrastructureContext;
 }
+

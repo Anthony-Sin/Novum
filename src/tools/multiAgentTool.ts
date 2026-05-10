@@ -1,6 +1,6 @@
 
 
-import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from "../momoa_core/types";
+import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from "../novum_core/types.js";
 
 export interface MultiAgentTool {
   
@@ -16,4 +16,5 @@ export interface MultiAgentTool {
 
   extractParameters(invocation: string, context: MultiAgentToolContext): Promise<ToolParsingResult>;
 }
+
 

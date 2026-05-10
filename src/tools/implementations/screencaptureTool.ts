@@ -1,7 +1,7 @@
 
 
 import { MultiAgentTool } from '../multiAgentTool.js';
-import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../momoa_core/types.js';
+import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../novum_core/types.js';
 import { DEFAULT_GEMINI_PRO_MODEL, DEFAULT_GEMINI_LITE_MODEL } from '../../config/models.js';
 import { removeBacktickFences } from '../../utils/markdownUtils.js';
 import { getAssetString, replaceRuntimePlaceholders } from '../../services/promptManager.js';
@@ -79,7 +79,7 @@ export const screencaptureTool: MultiAgentTool = {
         } catch (_) {}
       }
 
-      // Collect all image files from both requested files and the binary map
+      
       const imageExts = new Set(['png', 'jpg', 'jpeg', 'webp', 'tiff', 'tif', 'gif', 'bmp']);
       const mimeMap: Record<string, string> = {
         png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
@@ -90,13 +90,13 @@ export const screencaptureTool: MultiAgentTool = {
       const parts: Part[] = [];
       const imagesAttached: string[] = [];
 
-      // Add initial context image if present
+      
       if (context.initialImage && context.initialImageMimeType) {
         parts.push({ inlineData: { mimeType: context.initialImageMimeType, data: context.initialImage } });
         imagesAttached.push('[initial upload]');
       }
 
-      // Attach explicitly requested image files
+      
       for (const filename of requestedFiles) {
         const ext = filename.split('.').pop()?.toLowerCase() ?? '';
         if (context.binaryFileMap.has(filename) && imageExts.has(ext)) {
@@ -111,7 +111,7 @@ export const screencaptureTool: MultiAgentTool = {
         }
       }
 
-      // If no specific files requested, scan ALL binary image files in context
+      
       if (imagesAttached.length === 0 || requestedFiles.length === 0) {
         for (const [filename, base64Data] of context.binaryFileMap.entries()) {
           const ext = filename.split('.').pop()?.toLowerCase() ?? '';
@@ -197,4 +197,5 @@ Then provide the overall Figure Integrity Rating and recommended follow-up actio
     };
   }
 };
+
 

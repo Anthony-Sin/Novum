@@ -1,11 +1,11 @@
 
 
 import { DEFAULT_GEMINI_FLASH_MODEL, DEFAULT_GEMINI_LITE_MODEL } from "../../config/models.js";
-import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from "../../momoa_core/types.js";
+import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from "../../novum_core/types.js";
 import { replaceRuntimePlaceholders } from "../../services/promptManager.js";
-import { getFilesAndContent, removeBacktickFences, repairTruncatedJsonArray } from "../../utils/markdownUtils.js";
+import { getDocumentsAndContent, removeBacktickFences, repairTruncatedJsonArray } from "../../utils/markdownUtils.js";
 import { MultiAgentTool } from "../multiAgentTool.js";
-import { generateDiff } from '../../utils/diffGenerator.js';
+import { generatePaperDiff } from '../../utils/paperVersionDiff.js';
 
 const PARADOX_SYSTEM_PROMPT = `You are a Research Integrity Contradiction Analyst.
 You have been presented with an internal contradiction or logical impossibility within a published paper's data.
@@ -60,14 +60,14 @@ export const paradoxAuditTool: MultiAgentTool = {
         } catch (_) {}
       }
 
-      const fileNamesPlusContentString = await getFilesAndContent(requestedFiles, context);
-      const diffBlock = generateDiff(
+      const fileNamesPlusContentString = await getDocumentsAndContent(requestedFiles.map(f => ({ FILENAME: f, DESCRIPTION: '' })), context);
+      const diffBlock = generatePaperDiff(
         context.originalFileMap, context.fileMap,
         context.editedFilesSet, new Set(context.originalBinaryFileMap.keys())
       );
       const projectDiffString = diffBlock || "---No changes detected---";
 
-      // Generate adversarial contradiction for stress-testing
+      
       const contradictionPrompt = CONTRADICTION_PROMPT_TEMPLATE.replace('{{ContradictThis}}', paradoxToSolve);
       let contradiction = (await context.multiAgentGeminiClient.sendOneShotMessage(
         contradictionPrompt, { model: DEFAULT_GEMINI_FLASH_MODEL }
@@ -125,4 +125,6 @@ Resolve the contradiction definitively, or if unresolvable, specify exactly what
     return { success: false, error: `PARADOXAUDIT requires a description of the contradiction to resolve.` };
   }
 };
+
+
 

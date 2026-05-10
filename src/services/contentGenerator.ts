@@ -1,4 +1,4 @@
-﻿import {
+import {
   CountTokensResponse,
   GenerateContentResponse,
   GenerateContentParameters,
@@ -11,10 +11,6 @@
 } from "@google/genai";
 import { DEFAULT_GEMINI_MODEL } from "../config/models.js";
 
-/**
- * Interface abstracting the core functionalities for analyzing scientific papers,
- * checking data validity, and counting tokens for large supplementary materials.
- */
 export interface ContentGenerator {
   generateContent(
     request: GenerateContentParameters
@@ -32,10 +28,10 @@ export interface ContentGenerator {
 }
 
 export enum AuthType {
-  LOGIN_WITH_GOOGLE = "oauth-personal", // Used for institutional SSO
-  USE_GEMINI = "gemini-api-key",        // Used for core paper analysis
-  USE_VERTEX_AI = "vertex-ai",          // Used for massive dataset cross-referencing
-  CLOUD_SHELL = "cloud-shell",          // Used for local researcher environments
+  LOGIN_WITH_GOOGLE = "oauth-personal", 
+  USE_GEMINI = "gemini-api-key",        
+  USE_VERTEX_AI = "vertex-ai",          
+  CLOUD_SHELL = "cloud-shell",          
 }
 
 export type ContentGeneratorConfig = {
@@ -55,8 +51,8 @@ export async function createContentGeneratorConfig(
   const googleCloudProject = process.env.GOOGLE_CLOUD_PROJECT;
   const googleCloudLocation = process.env.GOOGLE_CLOUD_LOCATION;
 
-  // Use runtime model from config if available, otherwise fallback to parameter or default
-  // Defaults to models highly tuned for data discrepancy detection
+  
+  
   const effectiveModel = model || DEFAULT_GEMINI_MODEL;
 
   const contentGeneratorConfig: ContentGeneratorConfig = {
@@ -64,7 +60,7 @@ export async function createContentGeneratorConfig(
     authType,
   };
 
-  // If we are using institutional auth or we are in Cloud Shell, pass through
+  
   if (
     authType === AuthType.LOGIN_WITH_GOOGLE ||
     authType === AuthType.CLOUD_SHELL
@@ -77,7 +73,7 @@ export async function createContentGeneratorConfig(
     return contentGeneratorConfig;
   }
 
-  // Enterprise/Institutional fraud detection on massive clinical trial datasets
+  
   if (
     authType === AuthType.USE_VERTEX_AI &&
     !!googleApiKey &&
@@ -100,7 +96,7 @@ export async function createContentGenerator(
 ): Promise<ContentGenerator> {
   let httpOptions: { headers: { "User-Agent": string } } | undefined = undefined;
 
-  // Identify the crawler/analyzer to external scholarly APIs to prevent bans
+  
   if (sdkVersion && platformDetails) {
     httpOptions = {
       headers: {
@@ -135,16 +131,13 @@ export async function createContentGenerator(
   );
 }
 
-/**
- * Resolves the API Key for a specific model based on environment variables.
- * Enables using distinct keys for image manipulation detection vs text hallucination detection.
- */
 export function resolveApiKeyForModel(model: string, defaultApiKey?: string): string | undefined {
   if (!model) return defaultApiKey;
   
-  // Sanitize: Uppercase and replace non-alphanumeric chars with '_'
+  
   const sanitizedModel = model.toUpperCase().replace(/[^A-Z0-9]/g, '_');
   const envVarName = `GEMINI_API_KEY_${sanitizedModel}`;
   
   return process.env[envVarName] || defaultApiKey;
 }
+

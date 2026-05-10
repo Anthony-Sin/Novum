@@ -1,4 +1,4 @@
-﻿
+
 
 import {
   GenerateContentResponse,
@@ -14,37 +14,29 @@ import { ApiPolicyManager } from './apiPolicyManager.js';
 import { DEFAULT_GEMINI_FLASH_MODEL } from '../config/models.js';
 import { TranscriptManager } from './transcriptManager.js';
 import { ContentGenerator, createContentGenerator, ContentGeneratorConfig, AuthType, resolveApiKeyForModel } from './contentGenerator.js';
-import { FormattedTranscriptEntry, GeminiClientConfig, MarkerPair, ToolFunctionDeclaration } from '../momoa_core/types.js';
+import { FormattedTranscriptEntry, GeminiClientConfig, MarkerPair, ToolFunctionDeclaration } from '../novum_core/types.js';
 import { LlmBlockedError } from '../shared/errors.js';
 
 const MAX_ATTEMPTS = 6;
 
-/**
- * Interface for options passed to the fraud analysis content generation methods.
- */
 export interface GenerateContentOptions {
   model?: string;
   temperature?: number;
   enableThinking?: boolean;
-  enableGrounding?: boolean; // Critical for cross-referencing DOIs
+  enableGrounding?: boolean; 
   signal?: AbortSignal; 
   responseMimeType?: string;
   tools?: ToolFunctionDeclaration[]; 
 }
 
-/**
- * Client for interacting with the AI in a multi-agent paper review context.
- * Manages API calls, applies policy (rate limiting, backoff),
- * and integrates with investigation audit trails.
- */
 export class GeminiClient {
   private contentGenerators = new Map<string, Promise<ContentGenerator>>();
   private readonly apiPolicyManager: ApiPolicyManager;
   private readonly config: GeminiClientConfig;
   private readonly apiName = 'PaperIntegritySleuth';
 
-  // We store non-cached input, cached input, and output tokens separately 
-  // to manage costs when ingesting large PDFs and datasets.
+  
+  
   private tokenUsage = new Map<string, { 
     inputTokens: number, 
     outputTokens: number, 
@@ -126,12 +118,7 @@ export class GeminiClient {
     }
   }
 
-  /**
-   * Detects and cleans repetitive output. In fake papers, hallucinated texts or 
-   * synthetic citation generators often get stuck in loops generating similar looking
-   * data arrays or references. This truncates those loops to prevent context bloat.
-   */
-  private _removeRepetitiveBlocks(text: string): string {
+    private _removeRepetitiveBlocks(text: string): string {
     const MAX_REPETITIONS = 10;
     const lines = text.split('\n');
     const cleanedLines: string[] = [];
@@ -264,12 +251,7 @@ export class GeminiClient {
     }
   }
 
-  /**
-   * Replaces content between markers to manage context window.
-   * When dealing with 200-page papers, we often need to strip out redundant 
-   * theoretical background blocks while maintaining primary statistical results.
-   */
-  private async _reduceContents(
+    private async _reduceContents(
       contents: Content[],
       orderedMarkerPairs: MarkerPair[]
   ): Promise<Content[]> {
@@ -378,7 +360,7 @@ export class GeminiClient {
 
     let currentContents = [...contents];
 
-    // --- Proactive Context Size Management for Massive PDFs ---
+    
     try {
       const modelInfo = await contentGenerator.get({model: model})
       const maxTokens = modelInfo?.inputTokenLimit;
@@ -533,7 +515,7 @@ export class GeminiClient {
     
     const toolsArray: Tool[] = [];
     if (options?.enableGrounding) {
-        toolsArray.push({ googleSearch: {} }); // Critical to verify DOIs and claim originality
+        toolsArray.push({ googleSearch: {} }); 
     }
 
     const generateConfig: GenerateContentConfig = {
@@ -541,7 +523,7 @@ export class GeminiClient {
       tools: toolsArray.length > 0 ? toolsArray : undefined,
     };
     if (options?.enableGrounding && generateConfig.temperature === undefined) {
-        generateConfig.temperature = 0; // Needs deterministic output for fact checking
+        generateConfig.temperature = 0; 
     }
 
     const contents: Content[] = [
@@ -623,3 +605,4 @@ export class GeminiClient {
     return response;
   }
 }
+

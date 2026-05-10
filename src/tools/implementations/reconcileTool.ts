@@ -1,9 +1,9 @@
 
 
 import { MultiAgentTool } from '../multiAgentTool.js';
-import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../momoa_core/types.js';
+import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../novum_core/types.js';
 import { DEFAULT_GEMINI_PRO_MODEL, DEFAULT_GEMINI_LITE_MODEL } from '../../config/models.js';
-import { removeBacktickFences, getFilesAndContent } from '../../utils/markdownUtils.js';
+import { removeBacktickFences, getDocumentsAndContent } from '../../utils/markdownUtils.js';
 import { getAssetString, replaceRuntimePlaceholders } from '../../services/promptManager.js';
 import { Part } from '@google/genai';
 
@@ -77,7 +77,7 @@ export const reconcileTool: MultiAgentTool = {
         } catch (_) {}
       }
 
-      const fileContent = await getFilesAndContent(requestedFiles, context);
+      const fileContent = await getDocumentsAndContent(requestedFiles.map(f => ({ FILENAME: f, DESCRIPTION: '' })), context);
 
       const fullPrompt = `${RECONCILE_SYSTEM_PROMPT}
 
@@ -148,4 +148,5 @@ Conclude with the overall Dataset Integrity Rating and the specific evidence sup
     };
   }
 };
+
 

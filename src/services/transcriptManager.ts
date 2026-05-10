@@ -1,12 +1,9 @@
-﻿
+
 
 import { TranscriptManagerConfig, 
     FormattedTranscriptEntry, 
-    FormattedTranscriptPart, USER_ROLE } from "../momoa_core/types.js";
+    FormattedTranscriptPart, USER_ROLE } from "../novum_core/types.js";
 
-/**
- * Interface for a single entry in the investigation audit trail.
- */
 interface TranscriptEntry {
     speaker: string;
     content: string | any[];
@@ -18,17 +15,11 @@ interface TranscriptEntry {
 }
 
 export interface AddEntryOptions {
-    documentId?: string; // Often Maps to a DOI or Preprint ID
+    documentId?: string; 
     replacementIfSuperseded?: string;
     ephemeral?: boolean;
 }
 
-/**
- * @class TranscriptManager
- * @description Manages an Audit Trail of a paper's verification process.
- * If a paper section is identified as fraudulent or retracted during analysis,
- * older versions of that text can be automatically superseded with validated data.
- */
 export class TranscriptManager {
     private transcript: TranscriptEntry[] = [];
     private readonly config: TranscriptManagerConfig;
@@ -39,14 +30,10 @@ export class TranscriptManager {
         this.config = config;
     }
 
-    /**
-     * Initializes the Audit Trail with the target paper's text and optional 
-     * figures (images) for manipulation analysis (e.g. western blot tampering).
-     */
-     addImage(imagePrompt?: string, image?: string, imageMimeType?: string): void {
+         addImage(imagePrompt?: string, image?: string, imageMimeType?: string): void {
         const parts: FormattedTranscriptPart[] = [];
 
-        // 1. Add Image First for Forensics
+        
         if (image && imageMimeType) {
             parts.push({
                 inlineData: {
@@ -56,7 +43,7 @@ export class TranscriptManager {
             });
         }
 
-        // 2. Add Prompt/Context Second
+        
         if (imagePrompt) {
             parts.push({ text: imagePrompt });
         } else if (parts.length === 0) {
@@ -66,12 +53,7 @@ export class TranscriptManager {
         this.addEntry(USER_ROLE, parts, {}, false);
     }
 
-    /**
-     * Adds a new entry to the Investigation Log.
-     * If a verified replication dataset replaces an old paper claim,
-     * this automatically marks the old claim as superseded.
-     */
-    addEntry(
+        addEntry(
         speaker: string,
         content: string | any[],
         options: AddEntryOptions = {},
@@ -112,7 +94,7 @@ export class TranscriptManager {
                 newEntry.replacementIfSuperseded = replacementIfSuperseded;
             }
 
-            // Supersede older versions of the manuscript or retracted data
+            
             this.transcript.forEach(entry => {
                 const toolReplace = (entry.documentId && entry.documentId.includes(":") && entry.documentId.split(":", 1)[0] == newEntry.documentId && !entry.isSuperseded);
 
@@ -369,3 +351,4 @@ export class TranscriptManager {
     return cleanedLines.join('\n').trimEnd();
   }
 }
+

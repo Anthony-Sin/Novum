@@ -1,11 +1,11 @@
 
 
 import { MultiAgentTool } from '../multiAgentTool.js';
-import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../momoa_core/types.js';
+import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../novum_core/types.js';
 
 export const restartProjectTool: MultiAgentTool = {
   displayName: "Restart Project",
-  name: 'RESTART_PROJECT{', // This is the string the LLM will use
+  name: 'RESTART_PROJECT{', 
   endToken: '}',
 
   async execute(params: Record<string, string>, context: MultiAgentToolContext): Promise<MultiAgentToolResult> {
@@ -22,21 +22,21 @@ export const restartProjectTool: MultiAgentTool = {
       };
     }
 
-    // Call the new 'forceRestart' method we added to the Overseer class
-    (context.overseer as any).forceRestart(
+    
+    context.overseer?.forceRestart(
       guidance,
       "Restart triggered by Validation agent's RESTART_PROJECT tool."
     );
     
-    // This message confirms the tool ran.
-    // The check we add to workPhase.ts will catch this immediately.
+    
+    
     return {
       result: `---Project restart has been successfully triggered. This Work Phase will now halt.---`
     };
   },
 
   async extractParameters(invocation: string, _context: MultiAgentToolContext): Promise<ToolParsingResult> {
-    // This extracts the guidance string from between the curly braces
+    
     const guidance = invocation.slice(0, -1).trim(); 
     
     if (guidance) {
@@ -52,3 +52,5 @@ export const restartProjectTool: MultiAgentTool = {
     }
   }
 };
+
+

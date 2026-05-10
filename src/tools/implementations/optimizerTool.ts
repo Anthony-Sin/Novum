@@ -5,8 +5,8 @@ import * as fs from 'fs/promises';
 import * as os from 'os';
 import { spawn } from 'child_process';
 import { MultiAgentTool } from '../multiAgentTool.js';
-import { MultiAgentToolResult, MultiAgentToolContext, ToolParsingResult } from '../../momoa_core/types.js';
-import { addDynamicallyRelevantFile, updateFileEntry } from '../../utils/fileAnalysis.js';
+import { MultiAgentToolResult, MultiAgentToolContext, ToolParsingResult } from '../../novum_core/types.js';
+import { addDynamicallyRelevantDocument, updatePaperEntry } from '../../utils/paperAnalysis.js';
 import { MAX_MEM_PERCENTAGE, MAX_SCRIPT_EXECUTION_TIMEOUT } from '../../config/config.js';
 import { logFilename } from '../../config/config.js';
 
@@ -93,7 +93,7 @@ export const monteCarloTool: MultiAgentTool = {
       return { result: `Error: Missing simulation script or parameter space.` };
     }
 
-    // Generate simulation jobs
+    
     let jobs: Record<string, string>[] = [];
     if (budget > 0) {
       for (let i = 0; i < budget; i++) {
@@ -158,13 +158,14 @@ export const monteCarloTool: MultiAgentTool = {
         else await fs.writeFile(dest, content, 'utf8');
       }
 
-      // Compile Rust if needed
+      
       let executableScript = path.basename(evalScript);
       if (isRust) {
         const compilerLimitKB = Math.floor((os.freemem() / 1024) * MAX_MEM_PERCENTAGE);
         executableScript = 'mc_sim_binary';
         const compileRes = await runScript(
-          'sh', ['-c', `ulimit -v ${compilerLimitKB} && rustc ${evalScript} -o ${executableScript}`],
+          os.platform() === 'win32' ? 'cmd' : 'sh', 
+          os.platform() === 'win32' ? ['/c', `rustc ${evalScript} -o ${executableScript}`] : ['-c', `ulimit -v ${compilerLimitKB} && rustc ${evalScript} -o ${executableScript}`],
           tempDir, process.env, TIMEOUT
         );
         if (compileRes.exitCode !== 0) return { result: `Rust compilation failed:\n${compileRes.stderr}` };
@@ -195,12 +196,14 @@ export const monteCarloTool: MultiAgentTool = {
               const binSrc = path.join(tempDir, executableScript);
               const binDst = path.join(trialDir, executableScript);
               await fs.symlink(binSrc, binDst);
-              args = ['-c', `ulimit -v ${memLimitKB} && ${binDst}`];
+              cmd = os.platform() === 'win32' ? 'cmd' : 'sh';
+              args = os.platform() === 'win32' ? ['/c', `${binDst}`] : ['-c', `ulimit -v ${memLimitKB} && ${binDst}`];
             } else {
               if (executableScript !== path.basename(evalScript)) {
                 await fs.symlink(path.join(tempDir, executableScript), path.join(trialDir, executableScript));
               }
-              args = ['-c', `ulimit -v ${memLimitKB} && python3 ${executableScript}`];
+              cmd = os.platform() === 'win32' ? 'cmd' : 'sh';
+              args = os.platform() === 'win32' ? ['/c', `python ${executableScript}`] : ['-c', `ulimit -v ${memLimitKB} && python3 ${executableScript}`];
             }
             const env = {
               ...process.env, ...envConfig,
@@ -238,7 +241,7 @@ export const monteCarloTool: MultiAgentTool = {
         ? `Best Fabrication Score: ${bestStats.mean.toFixed(4)} (StdDev: ${bestStats.std.toFixed(4)})`
         : `Best Fabrication Score: ${bestScore}`;
 
-      const output = `## MONTECARLO — Fabrication Plausibility Simulation Results
+      const output = `## MONTECARLO ï¿½ Fabrication Plausibility Simulation Results
 
 Strategy: ${budget > 0 ? 'Random Search' : 'Grid Search'} | Trials per config: ${trials}
 ${bestStr}
@@ -296,4 +299,5 @@ ${resultsLog.slice(0, 20).join('\n')}`;
     };
   }
 };
+
 

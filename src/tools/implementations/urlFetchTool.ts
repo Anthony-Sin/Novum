@@ -1,14 +1,14 @@
 
 
 import { MultiAgentTool } from '../multiAgentTool.js';
-import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../momoa_core/types.js';
+import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../novum_core/types.js';
 import { getAssetString } from '../../services/promptManager.js';
 import * as path from 'node:path';
 import { Buffer } from 'node:buffer';
-import { addDynamicallyRelevantFile, updateFileEntry } from '../../utils/fileAnalysis.js';
+import { addDynamicallyRelevantDocument, updatePaperEntry } from '../../utils/paperAnalysis.js';
 
 const LARGE_FILE_LIMIT_KB = 100;
-const cache = new Map<string, MultiAgentToolResult>();
+const cache = new Map<string, MultiAgentToolResult>(); 
 
 export const registryLookupTool: MultiAgentTool = {
   displayName: "Registry & Retraction Fetcher",
@@ -82,8 +82,8 @@ export const registryLookupTool: MultiAgentTool = {
           if (context.binaryFileMap.has(filename)) context.binaryFileMap.delete(filename);
           context.fileMap.set(filename, content);
           context.editedFilesSet.add(filename);
-          addDynamicallyRelevantFile(filename);
-          await updateFileEntry(filename, context.fileMap, undefined, {
+          addDynamicallyRelevantDocument(filename);
+          await updatePaperEntry(filename, context.fileMap, undefined, {
             filename, description: analysisDescription, relatedFiles: ''
           });
           return {
@@ -97,8 +97,8 @@ export const registryLookupTool: MultiAgentTool = {
         if (context.fileMap.has(filename)) context.fileMap.delete(filename);
         context.binaryFileMap.set(filename, base64Content);
         context.editedFilesSet.add(filename);
-        addDynamicallyRelevantFile(filename);
-        await updateFileEntry(filename, context.fileMap, undefined, {
+        addDynamicallyRelevantDocument(filename);
+        await updatePaperEntry(filename, context.fileMap, undefined, {
           filename,
           description: isText ? `${analysisDescription} (Large)` : `${analysisDescription} (Binary)`,
           relatedFiles: ''
@@ -163,4 +163,5 @@ export function getFormattedCacheContents(): string {
   }
   return entries.join('\n----\n');
 }
+
 

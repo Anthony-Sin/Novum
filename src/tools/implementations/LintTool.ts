@@ -4,21 +4,21 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { spawn } from 'child_process';
 import { MultiAgentTool } from '../multiAgentTool.js';
-import { MultiAgentToolResult, MultiAgentToolContext, ToolParsingResult } from '../../momoa_core/types.js';
+import { MultiAgentToolResult, MultiAgentToolContext, ToolParsingResult } from '../../novum_core/types.js';
 import { randomUUID } from 'crypto';
 import { tmpdir } from 'os';
-import { isLockFile } from '../../utils/diffGenerator.js';
-import { fileNameLookup } from '../../utils/fileNameLookup.js';
+import { isLockFile } from '../../utils/paperVersionDiff.js';
+import { paperLookup } from '../../utils/paperLookup.js';
 
-// --- Utility Functions ---
+
 
 
 function getFullFilePath(sessionId: string, filename: string): string {
-    // Correctly uses the system temp directory (usually /tmp in Cloud Run)
+    
     const systemTempDir = tmpdir();
     
-    // Structure: /tmp/momoa_lint/<sessionId>/<filename>
-    // Adding 'momoa_lint' namespace prevents collisions with other tools using /tmp
+    
+    
     const tempDir = path.join(systemTempDir, 'momoa_lint', sessionId);
     return path.join(tempDir, filename);
 }
@@ -35,25 +35,25 @@ async function saveFile(sessionId: string, filename: string, fileContent: string
 
 
 function detectLanguage(filename: string): string {
-    // One off file names
+    
     const baseName = path.basename(filename).toLowerCase();
     if (baseName === 'pom.xml')
         return 'maven';
     else if (baseName === 'dockerfile')
         return 'docker';
 
-    // Find the last dot in the filename to extract the extension.
+    
     const lastDotIndex = filename.lastIndexOf('.');
 
-    // If no dot or the dot is the first character (e.g., '.bashrc'), there's no standard extension.
+    
     if (lastDotIndex < 1) {
         return 'unknown';
     }
 
-    // Extract the extension including the dot and convert to lowercase for case-insensitive matching.
+    
     const extension = filename.substring(lastDotIndex).toLowerCase();
 
-    // Files based on extensions
+    
     switch (extension) {
         case '.py':
             return 'python';
@@ -84,8 +84,8 @@ function processExecution(command: string, args: string[], filename: string, ful
         let stdout = '';
         let stderr = '';
 
-        // Use 'spawn' for security to prevent command injection by keeping
-        // command and arguments separate.
+        
+        
         console.log("Execute: " + command + " " + args.join(' '));
 
         const cmdLineProcess = spawn(command, args, { 
@@ -94,11 +94,11 @@ function processExecution(command: string, args: string[], filename: string, ful
           env: env || process.env
         });
 
-        // Implement timeout
+        
         const timeout = setTimeout(() => {
             cmdLineProcess.kill('SIGTERM');
             reject(`${resultPrefixString}Error: Process timed out after 60 seconds.`);
-        }, 60000); // 60 seconds timeout
+        }, 60000); 
 
         cmdLineProcess.stdout.on('data', (data) => {
             stdout += data.toString();
@@ -109,7 +109,7 @@ function processExecution(command: string, args: string[], filename: string, ful
         });
 
         cmdLineProcess.on('error', (err) => {
-            // Handle errors like command not found
+            
             clearTimeout(timeout);
             if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
                 reject(`${resultPrefixString}Error: Command "${command}" not found. Please ensure it is installed and in the system's PATH.`);
@@ -123,23 +123,25 @@ function processExecution(command: string, args: string[], filename: string, ful
             clearTimeout(timeout);
             let combinedOutput = stdout + stderr;
 
-            if (!combinedOutput) {
-                combinedOutput = successString;
+            if (_code === 0) {
+                if (!combinedOutput) combinedOutput = successString;
+            } else {
+                if (!combinedOutput) combinedOutput = "Linter failed to execute or exited with an error code but produced no output.";
             }
             const resultPrefix = resultPrefixString;
 
-            // We'll generally need to remove the path strings to avoid confusion.
+            
             const completePath = path.resolve(fullFileName);
             combinedOutput = combinedOutput.replaceAll(completePath, filename);
             combinedOutput = combinedOutput.replaceAll(fullFileName, filename);
 
-            // Always return whatever came from the linter.
+            
             resolve(`${resultPrefix}\n${combinedOutput}`);
         });
     });
 }
 
-// --- LintTool Class ---
+
 export const LintTool: MultiAgentTool = {
   displayName: "Lint Tool",
   name: 'LINT{',
@@ -155,7 +157,7 @@ export const LintTool: MultiAgentTool = {
       };
     }
 
-    // Combine keys from both maps for a comprehensive lookup.
+    
     const allFilesMap = new Map<string, string>([
       ...context.fileMap,
       ...Array.from(context.binaryFileMap.keys()).map(key => [key, ''] as [string, string])
@@ -164,8 +166,8 @@ export const LintTool: MultiAgentTool = {
     let filename = providedFilename.trim();
     
     if (!allFilesMap.has(filename)) {
-        // File not found. NOW, let's try to find a suggestion.
-        const suggestion = await fileNameLookup(filename, allFilesMap, context.multiAgentGeminiClient);
+        
+        const suggestion = await paperLookup(filename, allFilesMap, context.multiAgentGeminiClient);
 
         if (suggestion && suggestion !== filename && allFilesMap.has(suggestion)) {
             return {
@@ -184,12 +186,12 @@ export const LintTool: MultiAgentTool = {
       })
     );
 
-    // Handle binary files first.
+    
     if (context.binaryFileMap.has(filename)) {
        return { result: "Binary files are not supported for linting." }
     }
 
-    // Handle Lock Files
+    
     if (isLockFile(filename)) {
        return { result: "Lock files are not supported for linting." }
     }
@@ -199,30 +201,30 @@ export const LintTool: MultiAgentTool = {
        return { result: `\`${filename}\` is empty.` }
     }
 
-    // Use a unique identifier for the session to scope temporary files.
-    // We use the transcript ID if available, otherwise a fixed string.
-    const sessionId = context.infrastructureContext.getSessionId() || randomUUID.toString();
+    
+    
+    const sessionId = context.infrastructureContext.getSessionId() || randomUUID();
     const fullFileName = getFullFilePath(sessionId, filename);
 
     try {
-      // 1. Save the file to disk.
+      
       await saveFile(sessionId, filename, fileContent);
       const language = detectLanguage(filename);
 
-      // If C++, identify and copy sibling header files to the temp directory.
+      
       if (language === 'cpp') {
           const targetDir = path.dirname(filename);
           
-          // Iterate over all available files in the context
+          
           for (const [candidateName, candidateContent] of context.fileMap.entries()) {
-              // skip the file we just saved
+              
               if (candidateName === filename) continue;
 
-              // Check if it is a sibling (same directory) and a header file
+              
               if (path.dirname(candidateName) === targetDir) {
                   const ext = path.extname(candidateName).toLowerCase();
                   if (ext === '.h' || ext === '.hpp') {
-                      // Save the header file to the same relative path in the temp dir
+                      
                       await saveFile(sessionId, candidateName, candidateContent);
                   }
               }
@@ -238,13 +240,13 @@ export const LintTool: MultiAgentTool = {
           linterArgs = ['-m', 'flake8', fullFileName, '--config', 'linter-tool-definition-files/.flake8', '--show-source'];
         break;        
         case 'javascript':
-          // 1. Point to Hub's Binary (Absolute Path)
+          
           linterCommand = path.resolve('node_modules', '.bin', 'eslint');
           
-          // 2. Point to Hub's Config (Absolute Path)
+          
           const configPath = path.resolve('linter-tool-definition-files', 'eslint.config.js');
           
-          // 3. Target the file by BASENAME (since we will be inside the temp dir)
+          
           linterArgs = [
               path.basename(fullFileName), 
               '--config', configPath, 
@@ -254,18 +256,18 @@ export const LintTool: MultiAgentTool = {
           break;
         case 'go':
           linterCommand = 'revive';
-          // -formatter friendly: output format that is easy to parse
-          // fullFileName: the file to lint
+          
+          
           linterArgs = ['-formatter', 'friendly', fullFileName];
           break;
         case 'java':
           linterCommand = 'java';
-          // Note: This assumes checkstyle-10.23.1-all.jar is a valid JAR file.
+          
           linterArgs = ['-jar', 'linter-tool-definition-files/checkstyle-10.23.1-all.jar', fullFileName, '-c', 'linter-tool-definition-files/google_checks.xml'];
           break;
         case 'cpp':
           linterCommand = 'clang-tidy';
-          // Add standard flags for C++, ensure filename is first arg
+          
           linterArgs = [
             fullFileName, 
             '-checks=-clang-diagnostic-error', 
@@ -276,7 +278,7 @@ export const LintTool: MultiAgentTool = {
           ];
           break;
         case 'docker':
-          linterCommand = 'hadolint'; // Refactored to use globally installed binary
+          linterCommand = 'hadolint'; 
           linterArgs = [fullFileName];
           break;
         case 'kotlin':
@@ -298,9 +300,9 @@ export const LintTool: MultiAgentTool = {
         return { result: `You asked to lint ${filename} and this is the result from the Linter:\nInternal error: Could not determine linter command for language ${language}.` };
       }
 
-      // Determine working directory: 
-      // For JavaScript, we MUST run inside the temp dir to avoid "outside of base path" errors.
-      // For others, we can stay in the Hub (process.cwd()).
+      
+      
+      
       let executionCwd: string | undefined;
       let executionEnv: NodeJS.ProcessEnv = process.env;
 
@@ -310,14 +312,14 @@ export const LintTool: MultiAgentTool = {
           const projectNodeModules = path.resolve(process.cwd(), 'node_modules');
           
           executionEnv = {
-              ...process.env, // Inherit existing variables
-              NODE_PATH: projectNodeModules // Add our fix
+              ...process.env, 
+              NODE_PATH: projectNodeModules 
           };
       }
 
       const noWarningsOrErrors = "No warnings or errors were found.";
       const resultPrefix = `You asked to lint ${filename} and this is the result from the Linter:`;
-      // Execute the linter command
+      
       let output = await processExecution(
         linterCommand,
         linterArgs,
@@ -325,22 +327,22 @@ export const LintTool: MultiAgentTool = {
         fullFileName,
         resultPrefix,
         noWarningsOrErrors,
-        executionCwd, // Pass the new CWD
+        executionCwd, 
         executionEnv
       );
 
-      // We use a Regex to match the dynamic parts:
-      // 1. \(node:\d+\) matches "(node:30)", "(node:31)", etc.
-      // 2. [\s\S]*? matches all the content (lines and text) in between non-greedily.
-      // 3. The end text matches the specific footer of that Node warning.
+      
+      
+      
+      
       const warningRegex = /\(node:\d+\) \[MODULE_TYPELESS_PACKAGE_JSON\][\s\S]*?\(Use `node --trace-warnings \.\.\.` to show where the warning was created\)\s*/;
 
-      // Replace the regex match with an empty string
+      
       output = output.replace(warningRegex, "").trim();
 
-      // Check if the output is empty (or just the prefix)
+      
       if (output === resultPrefix || output === "") {
-          // Ensure we handle cases where resultPrefix might not be present if output was entirely the warning
+          
           output = resultPrefix ? `${resultPrefix}\n${noWarningsOrErrors}` : noWarningsOrErrors;
       }
 
@@ -356,10 +358,10 @@ export const LintTool: MultiAgentTool = {
       const errorMessage = error instanceof Error ? error.message : String(error);
       return { result: `You asked to lint ${filename} and this is the result from the Linter:\nError during execution: ${errorMessage}` };    
     } finally {
-        // --- Cleanup Logic ---
+        
         try {
-            // We should ideally remove all files we created, but removing the sessionDir
-            // recursively handles everything inside it.
+            
+            
             const sessionDir = path.dirname(fullFileName);
             
             await fs.rm(sessionDir, { recursive: true, force: true });
@@ -367,7 +369,7 @@ export const LintTool: MultiAgentTool = {
             const namespaceDir = path.dirname(sessionDir); 
             await fs.rmdir(namespaceDir).catch(() => {});
         } catch (cleanupError) {
-            // Ignore errors during cleanup (e.g. file already gone, dir not empty)
+            
         }
     }
   },
@@ -390,3 +392,4 @@ export const LintTool: MultiAgentTool = {
     }
   }
 }
+

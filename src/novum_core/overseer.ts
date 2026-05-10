@@ -1,4 +1,4 @@
-﻿
+
 import { DEFAULT_GEMINI_PRO_MODEL } from "../config/models.js";
 import { GeminiClient } from "../services/geminiClient.js";
 import { getAssetString, getExpertPrompt } from "../services/promptManager.js";
@@ -7,14 +7,10 @@ import { OverseerFeedback, GuidanceType } from "./types.js";
 
 const NO_DIFF_STRING = "---No diff information available---"
 
-/**
- * The Overseer class is responsible for periodically reviewing a worklog
- * for a single forensic investigation task and providing bias and rigor feedback.
- */
 export class Overseer {
   private interval: number;
   private multiAgentGeminiClient: GeminiClient;
-  private onFeedback: () => Promise<void>; // Internal callback for timer
+  private onFeedback: () => Promise<void>; 
   private worklog: string;
   private intervalId: NodeJS.Timeout | null;
   private isRunning: boolean;
@@ -32,7 +28,7 @@ export class Overseer {
     }
     this.interval = interval;
 
-    // Initialize properties
+    
     this.worklog = "";
     this.intervalId = null;
     this.isRunning = false;
@@ -45,11 +41,11 @@ export class Overseer {
     this.currentDiff = NO_DIFF_STRING;
     this.assumptions = assumptions;
 
-    // Bind the internal review function for setInterval
+    
     this.onFeedback = async () => {
       this._performReview().then(feedback => {
       if (feedback) {
-        this.pendingFeedback = feedback; // Store feedback, replacing any that hasn't been retrieved.
+        this.pendingFeedback = feedback; 
         console.log(`Overseer has generated new pending feedback.`);
       }}).catch(error => {
         console.error(`Error in Overseer's scheduled review:`, error);
@@ -57,24 +53,13 @@ export class Overseer {
     };
   }
 
-  /**
-   * Returns the current pending feedback without clearing it or committing it to history.
-   * This allows for "peeking" at the feedback before deciding to process it.
-   * @returns {object|null} The feedback object that is pending, or null if there is none.
-   */
-  public peekPendingFeedback(): OverseerFeedback | null {
+    public peekPendingFeedback(): OverseerFeedback | null {
     return this.pendingFeedback;
   }
 
-  /**
-   * Atomically retrieves pending feedback, clears it, and commits it to the history.
-   * This action signifies that the feedback has been "received" by the agent.
-   * @param feedback The feedback object to commit. If null, the currently pending feedback is committed.
-   * @returns {object|null} The feedback object that was processed and committed, or null if there was none.
-   */
-  public commitAndClearPendingFeedback(feedback?: OverseerFeedback): OverseerFeedback | null {
+    public commitAndClearPendingFeedback(feedback?: OverseerFeedback): OverseerFeedback | null {
     const feedbackToCommit = feedback || this.pendingFeedback;
-    this.pendingFeedback = null; // Clear pending feedback immediately.
+    this.pendingFeedback = null; 
 
     if (feedbackToCommit) {
       this.feedbackHistory.push(feedbackToCommit);
@@ -88,39 +73,29 @@ export class Overseer {
     return feedbackToCommit;
   }
 
-  /**
-   * Adds a log entry to the internal worklog.
-   * Note: This implementation only stores logs in-memory for the current session.
-   * @param logEntry The string entry to add to the worklog.
-   */
-  public addLog(logEntry: string): void {
+    public addLog(logEntry: string): void {
     const formattedLog = logEntry + "\n";
     this.worklog += formattedLog;
   }
 
-  /**
-   * Clears the current in-memory worklog, but preserves the feedback history and restart count.
-   */
-  public clearWorklog(): void {
+  public getLog(): string {
+    return this.worklog;
+  }
+
+    public clearWorklog(): void {
     this.currentDiff = NO_DIFF_STRING;
     this.worklog = "";
     console.log(`Worklog cleared.`);
   }
 
-  /**
-   * Starts the periodic review process.
-   */
-  public start(): void {
+    public start(): void {
     if (this.isRunning) return;
     console.log(`Overseer started with a ${this.interval / 1000}s interval.`);
     this.isRunning = true;
     this.intervalId = setInterval(this.onFeedback, this.interval);
   }
 
-  /**
-   * Stops the periodic review process.
-   */
-  public stop(): void {
+    public stop(): void {
     if (!this.isRunning) return;
     if (this.intervalId !== null) {
       clearInterval(this.intervalId);
@@ -142,20 +117,11 @@ export class Overseer {
     console.log(`Overseer restart was forced by an agent.`);
   }
 
-  /**
-   * Updates the current diff string held by the Overseer.
-   * @param diffString The latest unified diff string.
-   */
-  public updateCurrentDiff(diffString: string): void {
+    public updateCurrentDiff(diffString: string): void {
     this.currentDiff = diffString || "---No changes detected---";
   }
 
-  /**
-   * Forces the Overseer to provide guidance to the agent.
-   * @param guidance The guidance message to provide.
-   * @param reasoning The reasoning for providing guidance (optional).
-   */
-  public forceGuidance(guidance: string, reasoning: string = "Guidance provided by user."): void {
+    public forceGuidance(guidance: string, reasoning: string = "Guidance provided by user."): void {
     if (this.pendingFeedback) {
       console.warn("Overseer `forceGuidance` overwriting existing pending feedback.");
     }
@@ -168,21 +134,12 @@ export class Overseer {
     console.log(`Overseer guidance was forced by an agent.`);
   }
 
-  /**
-   * Forces an immediate review by the Overseer.
-   * @returns A promise that resolves with the feedback object, or null if no feedback was generated.
-   */
-  public async forceReview(): Promise<OverseerFeedback | null> {
+    public async forceReview(): Promise<OverseerFeedback | null> {
     console.log(`Forcing an immediate Overseer review...`);
     return this._performReview();
   }
 
-  /**
-   * Performs the core review logic using an AI agent.
-   * @returns A promise that resolves with the feedback object, or null if an error occurred or review is in progress.
-   * @private
-   */
-  private async _performReview(): Promise<OverseerFeedback | null> {
+    private async _performReview(): Promise<OverseerFeedback | null> {
     if (this.isChecking) {
       console.log("Overseer check is already in progress, skipping this invocation.");
       return null;
@@ -225,8 +182,10 @@ ${this.assumptions}`);
 
       let feedback = undefined;
       if (responseText) { 
-        const cleanResponseText = removeBacktickFences(responseText);
-        feedback = JSON.parse(cleanResponseText);
+        let cleanResponseText = removeBacktickFences(responseText.trim());
+        const jsonMatch = cleanResponseText.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error("No JSON object found in overseer response.");
+        feedback = JSON.parse(jsonMatch[0]);
       }
 
       if (typeof feedback?.action !== 'string' || typeof feedback?.reasoning !== 'string') {
@@ -260,3 +219,4 @@ ${this.assumptions}`);
     }
   }
 }
+

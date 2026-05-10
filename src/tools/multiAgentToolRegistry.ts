@@ -1,12 +1,12 @@
 import { MultiAgentTool } from './multiAgentTool.js';
 import { fileReaderTool } from './implementations/fileReaderTool.js';
 import { smartFileEditorTool } from './implementations/smartFileEditorTool.js';
-import { statAuditTool } from './implementations/askExpertTool.js';
+import { statAuditTool } from './implementations/statAuditTool.js';
 import { fileSearchTool } from './implementations/fileSearchTool.js';
 import { paradoxAuditTool } from './implementations/paradoxResolutionTool.js';
 import { moveFolderTool } from './implementations/renameFolderTool.js';
-import { MultiAgentToolContext, MultiAgentToolResult } from './momoa_core/types.js';
-import { getAssetString } from './services/promptManager.js';
+import { MultiAgentToolContext, MultiAgentToolResult } from '../novum_core/types.js';
+import { getAssetString } from '../services/promptManager.js';
 import { regexValidatorTool } from './implementations/regexValidatorTool.js';
 import { restartProjectTool } from './implementations/projectRestartTool.js';
 import { revertFileTool } from './implementations/revertFileTool.js';
@@ -80,7 +80,7 @@ export async function executeTool(
   }
 }
 
-// --- Core Document Tools ---
+
 registerTool(fileReaderTool);
 registerTool(smartFileEditorTool);
 registerTool(fileSearchTool);
@@ -91,15 +91,17 @@ registerTool(LintTool);
 registerTool(regexValidatorTool);
 registerTool(restartProjectTool);
 
-// --- Forensic Analysis Tools ---
-registerTool(statAuditTool);           // STATAUDIT  - Statistical Reconstruction
-registerTool(safetyScanTool);          // SAFETYSCAN - Result Anomaly Detector
-registerTool(reconcileTool);           // RECONCILE  - Dataset Integrity
-registerTool(monteCarloTool);          // MONTECARLO - Fabrication Plausibility Simulator
-registerTool(forensicScriptTool);      // RUNFORENSIC - Forensic Script Executor
-registerTool(paradoxAuditTool);        // PARADOXAUDIT - Contradiction Resolution
-registerTool(registryFactFinderTool);  // FACTFINDER - Preregistration & Provenance
-registerTool(registryLookupTool);      // URL/FETCH  - Registry & Retraction Fetcher
-registerTool(biasAuditTool);           // BIASAUDIT  - Overseer Bias Auditor
-registerTool(screencaptureTool);       // SCREENCAPTURE - Figure Integrity Tool
+
+registerTool(statAuditTool);           
+registerTool(safetyScanTool);          
+registerTool(reconcileTool);           
+registerTool(monteCarloTool);          
+registerTool(forensicScriptTool);      
+registerTool(paradoxAuditTool);        
+registerTool(registryFactFinderTool);  
+registerTool(registryLookupTool);      
+registerTool(biasAuditTool);           
+registerTool(screencaptureTool);       
+
+
 

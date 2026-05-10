@@ -1,6 +1,6 @@
 
 
-import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../momoa_core/types.js';
+import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../novum_core/types.js';
 import { removeBacktickFences } from '../../utils/markdownUtils.js';
 import { MultiAgentTool } from '../multiAgentTool.js';
 
@@ -16,7 +16,7 @@ interface TestCase {
   pythonMatchType?: 'search' | 'match' | 'fullmatch';
 }
 
-// --- Helper Functions (ported from regex_validator.js) ---
+
 
 
 function stripRegexDelimiters(regexString: string): string {
@@ -106,10 +106,10 @@ function regexValidator(regExString: string, flags = '', testCases: TestCase[] =
           if (!regex.global) {
             throw new Error("Test case of type 'findAll' requires the global 'g' flag.");
           }
-          // Use matchAll to get an iterator, then convert it to an array of arrays
+          
           actual = Array.from(input.matchAll(regex), match => [...match]);
           
-          // The comparison logic needs to handle an array of arrays
+          
           passed = Array.isArray(expected) &&
                    Array.isArray(actual) &&
                    actual.length === expected.length &&
@@ -150,7 +150,7 @@ export const regexValidatorTool: MultiAgentTool = {
 
   
   async extractParameters(invocation: string, _context: MultiAgentToolContext): Promise<ToolParsingResult> {
-    const payloadString = `{${invocation.slice(0, -1)}}`;
+    const payloadString = `{${invocation.trim().slice(0, -1)}}`;
     let payload: any;
 
     try {
@@ -164,7 +164,7 @@ export const regexValidatorTool: MultiAgentTool = {
 
     const issues: string[] = [];
 
-    // Validate regExString
+    
     if (!payload.regExString || typeof payload.regExString !== 'string') {
       issues.push("The JSON payload is missing the required 'regExString' field, or its value is not a string.");
     } else {
@@ -180,7 +180,7 @@ export const regexValidatorTool: MultiAgentTool = {
         }
     }
 
-    // Validate testCases
+    
     if (!Array.isArray(payload.testCases)) {
       issues.push("The JSON payload is missing the required 'testCases' field, or its value is not an array.");
     }
@@ -206,7 +206,7 @@ export const regexValidatorTool: MultiAgentTool = {
 
     let finalResultString = '';
 
-    // If the regex is valid and all tests passed, get an explanation.
+    
     if (validationResult.isRegexValid && validationResult.summary.failed === 0) {
         const explanation = await getRegexExplanation(regExString, flags, context);
         finalResultString += `**Validation Successful**\n\n`;
@@ -225,3 +225,4 @@ export const regexValidatorTool: MultiAgentTool = {
     return { result: finalResultString };
   },
 };
+

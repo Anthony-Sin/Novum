@@ -1,7 +1,7 @@
 
 
-import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from "../../momoa_core/types.js";
-import { addDynamicallyRelevantFile, getFileAnalysis, removeFileEntry, updateFileEntry } from "../../utils/fileAnalysis.js";
+import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from "../../novum_core/types.js";
+import { addDynamicallyRelevantDocument, getPaperAnalysis, removePaperEntry, updatePaperEntry } from "../../utils/paperAnalysis.js";
 import { MultiAgentTool } from "../multiAgentTool.js";
 
 
@@ -15,17 +15,17 @@ export const moveFolderTool: MultiAgentTool = {
     const source = params.source;
     const destination = params.destination; 
 
-    addDynamicallyRelevantFile(source);
-    addDynamicallyRelevantFile(destination);
+    addDynamicallyRelevantDocument(source);
+    addDynamicallyRelevantDocument(destination);
 
     let sourceExists = false;
     const allFileKeys = [...context.fileMap.keys(), ...context.binaryFileMap.keys()];
 
-    // Check if the source path exists as a direct file entry
+    
     if (context.fileMap.has(source) || context.binaryFileMap.has(source)) {
       sourceExists = true;
     } else {
-      // If not a file, check if it exists as a folder by looking for any file paths that start with it
+      
       const normalizedSourcePrefix = source.endsWith('/') ? source : source + '/';
       for (const key of allFileKeys) {
         if (key.startsWith(normalizedSourcePrefix)) {
@@ -41,9 +41,9 @@ export const moveFolderTool: MultiAgentTool = {
     }
 
     let resultString;
-    // Case 1: Renaming a single file.
+    
     if (context.fileMap.has(source) || context.binaryFileMap.has(source)) {
-      // Check if destination is already taken by a file.
+      
       if (context.fileMap.has(destination) || context.binaryFileMap.has(destination)) {
         return { result: `Couldn't rename ${source} because '${destination}' already exists.` };
       }
@@ -58,12 +58,12 @@ export const moveFolderTool: MultiAgentTool = {
       await updateFileInMetadata(source, destination, context);
       resultString = `Renamed file '${source}' to '${destination}'`;
     } else {
-      // Case 2: Moving a folder
+      
       if (destination.startsWith(source + '/')) {
         return { result: `Error: Cannot move a directory ('${source}') into a subdirectory of itself.` };
       }
 
-      // Check if destination path is blocked by an existing file or folder.
+      
       if (context.fileMap.has(destination) || context.binaryFileMap.has(destination)) {
         return { result: `Invalid destination folder name -- a file already exists with that name.` };
       }
@@ -131,7 +131,7 @@ async function updateFileInMetadata(source: string, destination: string, context
     context.binaryFileMap.delete(source);
   } else {
     const sourceContent = context.fileMap.get(source);
-    const sourceAnalysis = getFileAnalysis(source);
+    const sourceAnalysis = getPaperAnalysis(source);
     if (sourceAnalysis) {
       sourceAnalysis.filename = destination;
       sourceAnalysis.relatedFiles = '';
@@ -139,9 +139,10 @@ async function updateFileInMetadata(source: string, destination: string, context
     }
 
     context.fileMap.set(destination, sourceContent ?? '');
-    await updateFileEntry(destination, context.fileMap, undefined, sourceAnalysis);
+    await updatePaperEntry(destination, context.fileMap, undefined, sourceAnalysis);
 
     context.fileMap.delete(source);
-    removeFileEntry(source);
+    removePaperEntry(source);
   }
 }
+

@@ -1,8 +1,8 @@
 
 
 import { MultiAgentTool } from '../multiAgentTool.js';
-import { findInFiles } from '../../utils/fileAnalysis.js';
-import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../momoa_core/types.js';
+import { findInDocuments } from '../../utils/paperAnalysis.js';
+import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../novum_core/types.js';
 
 
 export const fileSearchTool: MultiAgentTool = {
@@ -19,21 +19,21 @@ export const fileSearchTool: MultiAgentTool = {
       completed_status_message: `Searching for \`${query}\``,
     }));
 
-    // 1. Search text file content.
-    const contentMatches = findInFiles(query, context.fileMap) || [];
     
-    // Use a Set to store unique results to avoid duplicates.
+    const contentMatches = findInDocuments(query, context.fileMap) || [];
+    
+    
     const searchResults = new Set<string>(contentMatches);
 
-    // 2. Search all filenames (both text and binary).
+    
     const allFilenames = [...context.fileMap.keys(), ...context.binaryFileMap.keys()];
     for (const filename of allFilenames) {
         if (filename.includes(query)) {
             if (context.binaryFileMap.has(filename)) {
                 searchResults.add(`Binary file found: ${filename}`);
             } else {
-                // If found by content search, it's already in the set as just the filename.
-                // This logic ensures we don't add it twice.
+                
+                
                 searchResults.add(filename);
             }
         }
@@ -85,3 +85,4 @@ export const fileSearchTool: MultiAgentTool = {
     }
   }
 };
+

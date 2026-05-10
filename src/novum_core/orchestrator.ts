@@ -1,4 +1,4 @@
-﻿import * as fs from 'node:fs/promises';
+import * as fs from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import {
@@ -12,16 +12,16 @@ import { ServerMode, UserSecrets } from '../shared/model.js';
 import { PROJECT_DIFF_ID } from '../tools/implementations/revertFileTool.js';
 import { parseToolRequest } from '../tools/multiAgentToolParser.js';
 import { executeTool, getTool } from '../tools/multiAgentToolRegistry.js';
-import { generateDiff, generateDiffString } from '../utils/diffGenerator.js';
-import { getFAQs } from '../utils/faqs.js';
-import { analyzeAndSetTaskRelevantFiles, analyzeFiles, getTaskRelevantFileDescriptions } from '../utils/fileAnalysis.js';
+import { generatePaperDiff, generatePaperDiffReport } from '../utils/paperVersionDiff.js';
+import { getFindings } from '../utils/investigationFAQs.js';
+import { analyseAndSetInvestigationRelevantDocuments, analysePapers, getInvestigationRelevantDescriptions } from '../utils/paperAnalysis.js';
 import { removeBacktickFences, replaceContentBetweenMarkers } from '../utils/markdownUtils.js';
-import { enrichPrompt } from '../utils/promptEnrichment.js';
+import { enrichInvestigationPrompt } from '../utils/analysisPromptEnricher.js';
 import { Overseer } from './overseer.js';
 import { MultiAgentToolContext, ToolConfirmationOutcome, GuidanceType, InfrastructureContext } from './types.js';
 import { WorkPhase } from './workPhase.js';
 import { LlmBlockedError } from '../shared/errors.js';
-import { generateSessionTitle } from '../utils/sessionTitleGenerator.js';
+import { generateInvestigationTitle } from '../utils/investigationTitleGenerator.js';
 import { withDeadline } from '../utils/timeoutHelper.js';
 import { CleanFormattedDateTime } from '../utils/dateTimeStrings.js';
 import { checkContainerMemory } from '../utils/memoryChecker.js';
@@ -31,10 +31,6 @@ const EXISTING_FAQ_ID = "EXISTING_FAQ_ID";
 const PROJECT_DEFINITION_ID = 'project-definition';
 const FORCE_NO_HITL = false;
 
-/**
- * The Orchestrator class manages the multi-agent system,
- * coordinating interactions between different experts and tools.
- */
 export class Orchestrator {
   private originalFileMap: Map<string, string>;
   private originalBinaryFileMap: Map<string, string>;
@@ -104,7 +100,8 @@ export class Orchestrator {
     this.investigationHalted = investigationHalted;
     this.transcriptManager = new TranscriptManager({ context: infrastructureContext });
     this.overseer = undefined;
-    this.maxTurns = 20;
+    const configMaxTurns = (infrastructureContext as any)?.getMaxTurns?.();
+    this.maxTurns = (typeof configMaxTurns === 'number' && configMaxTurns > 0) ? configMaxTurns : 20;
     this.signal = signal;
     this.saveFiles = saveFiles;
 
@@ -248,7 +245,7 @@ export class Orchestrator {
     this.toolContext.gracePeriodMs = this.gracePeriodMs;
     this.hasWarnedTimeLow = false;
 
-    const sessionTitle = await generateSessionTitle(this.initialPrompt.trim(), this.multiAgentGeminiClient) ?? "New Task";
+    const sessionTitle = await generateInvestigationTitle(this.initialPrompt.trim(), this.multiAgentGeminiClient) ?? "New Task";
     await this.updateProgressLog(`# ${sessionTitle}\n`);
     await this.updateProgressLog("## Forensic Audit Initialization");
 
@@ -324,7 +321,7 @@ export class Orchestrator {
 
       this.initialPrompt = researchPrompt;
 
-      const recommendations = await enrichPrompt("prompt-enricher", this.initialPrompt.trim(), this.assumptions, this.projectSpecification ?? "---No specification provided---", this.multiAgentGeminiClient, this.sendMessage, this.initialImage, this.initialImageMimeType);
+      const recommendations = await enrichInvestigationPrompt("prompt-enricher", this.initialPrompt.trim(), this.assumptions, this.projectSpecification ?? "---No specification provided---", this.multiAgentGeminiClient, this.sendMessage, this.initialImage, this.initialImageMimeType);
 
       const dateTimeString = CleanFormattedDateTime(new Date());
       this.initialPrompt = `${researchPrompt}\n\n${recommendations}\n\nThe current date and time is: ${dateTimeString}`;
@@ -354,9 +351,9 @@ export class Orchestrator {
       this.transcriptManager.addEntry('user', faqString, { documentId: EXISTING_FAQ_ID, replacementIfSuperseded: faqString });
 
       await this.updateProgressLog("### Analyzing provided project files")
-      await analyzeFiles(this.fileMap, this.multiAgentGeminiClient);
+      await analysePapers(this.fileMap, this.multiAgentGeminiClient);
 
-      await analyzeAndSetTaskRelevantFiles(
+      await analyseAndSetInvestigationRelevantDocuments(
         this.initialPrompt,
         this.assumptions,
         this.fileMap,
@@ -368,11 +365,11 @@ export class Orchestrator {
         this.initialImageMimeType
       );
 
-      const existingFilesString = `# ${getTaskRelevantFileDescriptions()}\n\n**Binary File Summary:**\n* ${this.binaryFileMap.size} binary files.`;
+      const existingFilesString = `# ${getInvestigationRelevantDescriptions()}\n\n**Binary File Summary:**\n* ${this.binaryFileMap.size} binary files.`;
 
       this.transcriptManager.addEntry('user', existingFilesString, { documentId: EXISTING_FILES_ID, replacementIfSuperseded: existingFilesString });
 
-      const initialDiffBlock = generateDiffString(this.toolContext, true);
+      const initialDiffBlock = generatePaperDiffReport(this.toolContext, true);
       this.transcriptManager.addEntry(
         'user',
         initialDiffBlock,
@@ -431,29 +428,29 @@ export class Orchestrator {
 
         this.toolContext.transcriptForContext = this.transcriptManager;
 
-        const updatedFilesString = `# ${getTaskRelevantFileDescriptions()}\n\nBinary File Summary:\n* ${this.binaryFileMap.size} binary files.`;
+        const updatedFilesString = `# ${getInvestigationRelevantDescriptions()}\n\nBinary File Summary:\n* ${this.binaryFileMap.size} binary files.`;
         this.transcriptManager.replaceEntry(
           EXISTING_FILES_ID,
           updatedFilesString
         );
         
         let updatedFaqString = "### Expert Answers to Frequently Asked Questions:\n";
-        updatedFaqString += getFAQs();
+        updatedFaqString += getFindings();
         this.transcriptManager.replaceEntry(
           EXISTING_FAQ_ID,
           updatedFaqString
         );
         
-        const newDiffBlock = generateDiffString(this.toolContext, true);
+        const newDiffBlock = generatePaperDiffReport(this.toolContext, true);
         this.transcriptManager.replaceEntry(
           PROJECT_DIFF_ID,
           newDiffBlock
         );
 
-        if (turnCount > maxOrchestratorTurns + 1) {
+        if (turnCount > maxOrchestratorTurns + 1 && turnCount <= maxOrchestratorTurns + 2) {
           this.transcriptManager.addEntry('user', `You have run out of turns and MUST return a final output. You must NOT start any new Work Phases. You must now provide your best response to try and solve the project definition you were assigned.`);
         }
-        else if (turnCount > maxOrchestratorTurns + 2) {
+        if (turnCount > maxOrchestratorTurns + 2) {
           isDone = true;
           await this.endOrchestrator();
           continue;
@@ -484,12 +481,12 @@ export class Orchestrator {
 
               this.transcriptManager.addEntry('user', preamble);
 
-              const originalFilesString = `# ${getTaskRelevantFileDescriptions() ?? "--No files available--"}\n\nBinary File Summary:\n* ${this.binaryFileMap.size} binary files.`;
+              const originalFilesString = `# ${getInvestigationRelevantDescriptions() ?? "--No files available--"}\n\nBinary File Summary:\n* ${this.binaryFileMap.size} binary files.`;
               this.transcriptManager.addEntry('user', originalFilesString, { documentId: EXISTING_FILES_ID, replacementIfSuperseded: originalFilesString });
               
               this.transcriptManager.addEntry('user', faqString, { documentId: EXISTING_FAQ_ID, replacementIfSuperseded: faqString });
               
-              const emptyDiffBlock = generateDiffString(this.toolContext, true);
+              const emptyDiffBlock = generatePaperDiffReport(this.toolContext, true);
               this.transcriptManager.addEntry(
                 'user',
                 emptyDiffBlock,
@@ -753,7 +750,7 @@ ${retrospectiveObject.other_pertinent_notes || '--None--'}`.trim();
         }
 
         this.transcriptManager.addEntry('user', 'Thanks! You have to use a tool, start a workphase or return a result.'); 
-        this.updateLog(`Orchstrator didn't invoke a tool, start a workphase, or return a result`);
+        this.updateLog(`Orchestrator didn't invoke a tool, start a workphase, or return a result`);
       }
     } catch (error: unknown) {
       if (error instanceof LlmBlockedError) {
@@ -774,7 +771,7 @@ ${retrospectiveObject.other_pertinent_notes || '--None--'}`.trim();
     const feedback = `The system performed an emergency shutdown. Please check the LLM API status and retry the project later.`;
 
     const endTime = Date.now();
-    const totalTimeMs = endTime - (this.startTime || endTime); 
+    const totalTimeMs = endTime - (this.startTime !== 0 ? this.startTime : endTime); 
     const totalTimeSeconds = (totalTimeMs / 1000).toFixed(2);
 
     const tokenUsage = this.multiAgentGeminiClient.getTokenUsage();
@@ -821,7 +818,7 @@ ${tokenUsageXml.trim()}
         ...this.binaryFileMap.keys()
     ]);
 
-    const diffString = generateDiff(
+    const diffString = generatePaperDiff(
         combinedOriginalFileMap, 
         combinedFinalFileMap, 
         this.editedFileList,
@@ -870,7 +867,7 @@ ${tokenUsageXml.trim()}
   }
 
   private async endOrchestrator() {
-    await this.updateLog(`\n# Orchestrator is finshed.`); 
+    await this.updateLog(`\n# Orchestrator is finished.`); 
     await this.updateProgressLog(`### Orchestrator\nOrchestration loop has completed.`)
     if (this.overseer) {
       await this.updateProgressLog("Shutting down Overseer.");
@@ -882,7 +879,7 @@ ${tokenUsageXml.trim()}
     await this.updateProgressLog(`\n## Project Result Summary\n${retrospective}`);
 
     const endTime = Date.now();
-    const totalTimeMs = endTime - (this.startTime || endTime); 
+    const totalTimeMs = endTime - (this.startTime !== 0 ? this.startTime : endTime); 
     const totalTimeSeconds = (totalTimeMs / 1000).toFixed(2);
 
     const tokenUsage = this.multiAgentGeminiClient.getTokenUsage();
@@ -929,7 +926,7 @@ ${tokenUsageXml.trim()}
         ...this.binaryFileMap.keys()
     ]);
 
-    const diffString = generateDiff(
+    const diffString = generatePaperDiff(
         combinedOriginalFileMap, 
         combinedFinalFileMap, 
         this.editedFileList,
@@ -977,3 +974,4 @@ ${tokenUsageXml.trim()}
     }));
   }
 }
+

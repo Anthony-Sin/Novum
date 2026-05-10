@@ -1,4 +1,4 @@
-﻿
+
 
 import { DEFAULT_GEMINI_FLASH_MODEL, DEFAULT_GEMINI_LITE_MODEL } from "../config/models.js";
 import { GeminiClient } from "../services/geminiClient.js";
@@ -7,12 +7,12 @@ import { AddEntryOptions, TranscriptManager } from "../services/transcriptManage
 import { PROJECT_DIFF_ID } from "../tools/implementations/revertFileTool.js";
 import { parseToolRequest } from "../tools/multiAgentToolParser.js";
 import { executeTool, getTool } from "../tools/multiAgentToolRegistry.js";
-import { generateDiffString } from "../utils/diffGenerator.js";
-import { getTaskRelevantFileDescriptions } from "../utils/fileAnalysis.js";
+import { generatePaperDiffReport } from "../utils/paperVersionDiff.js";
+import { getInvestigationRelevantDescriptions } from "../utils/paperAnalysis.js";
 import { formatExpertList, removeBacktickFences, replaceContentBetweenMarkers, toKebabCase } from "../utils/markdownUtils.js";
 import { Overseer } from "./overseer.js";
 import { Expert, MultiAgentToolContext, GuidanceType } from "./types.js";
-import { getFAQs } from "../utils/faqs.js";
+import { getFindings } from "../utils/investigationFAQs.js";
 import { getFormattedCacheContents } from "../tools/implementations/urlFetchTool.js";
 import { withDeadline } from "../utils/timeoutHelper.js";
 
@@ -30,10 +30,6 @@ const emptySummary =
   "other_pertinent_notes": ""
 }`;
 
-/**
- * The WorkPhase class manages the execution of a specific work phase,
- * coordinating interactions between multiple AI agents (experts) and tools.
- */
 export class WorkPhase {
   private multiAgentGeminiClient: GeminiClient;
   private sendMessage: (message: string) => void;
@@ -139,7 +135,7 @@ export class WorkPhase {
 
     let workPhaseToolPlaceholders = workphaseTools ? workphaseTools
       .split(',')
-      .map((t: string) => `${tool-instructions/${t.trim().slice(1, -1)}}`)
+      .map((t: string) => `\${tool-instructions/${t.trim().slice(1, -1)}}`)
       .join('\n\n----\n\n') : '';
 
     if (workPhaseToolPlaceholders) 
@@ -225,7 +221,7 @@ ${this.task}
 
       let inRoomModel = thisExpertModel ?? workphaseModel ?? DEFAULT_GEMINI_FLASH_MODEL;
 
-      const scaledTemperature = Math.min(Math.max(3 + (thisExpertTemperature - 3) + (workphaseTemperature - 3), 5), 0);
+      const scaledTemperature = Math.min(Math.max(3 + (thisExpertTemperature - 3) + (workphaseTemperature - 3), 0), 5);
       inRoomTemperature = scaledTemperature === 0 ? 0 : (0.25 + (1.75 * (scaledTemperature - 1)) / 4);
       
       const thisTranscriptManager = new TranscriptManager({ 
@@ -268,7 +264,7 @@ ${this.task}
         );
       }     
       
-      const existingFilesString = `# Available editable text-based files:\n${getTaskRelevantFileDescriptions()}\n\nBinary Files Summary:\n* ${this.toolContext.binaryFileMap.size} binary files.`;
+      const existingFilesString = `# Available editable text-based files:\n${getInvestigationRelevantDescriptions()}\n\nBinary Files Summary:\n* ${this.toolContext.binaryFileMap.size} binary files.`;
       thisTranscriptManager.addEntry(
         'user',
         existingFilesString,
@@ -286,7 +282,7 @@ ${this.task}
         );
       }
       
-      const newDiffBlock = generateDiffString(this.toolContext, true);
+      const newDiffBlock = generatePaperDiffReport(this.toolContext, true);
       thisTranscriptManager.addEntry(
         'user',
         newDiffBlock,
@@ -366,7 +362,7 @@ ${this.task}
       await this.updateLog(`### ${currentExpertName} (Turn #${turn})`);
 
       let updatedFaqString = "# Expert Answers to Frequently Asked Questions:\n";
-      updatedFaqString += getFAQs();
+      updatedFaqString += getFindings();
       currentExpert?.transcript.replaceEntry(
         "FAQ_ID",
         updatedFaqString
@@ -374,10 +370,10 @@ ${this.task}
 
       currentExpert?.transcript.replaceEntry(
         "FILES_ID",
-        `\n# Available editable text-based files:\n${getTaskRelevantFileDescriptions()}\n\nBinary Files Summary:\n${this.toolContext.binaryFileMap.size} binary files.`
+        `\n# Available editable text-based files:\n${getInvestigationRelevantDescriptions()}\n\nBinary Files Summary:\n${this.toolContext.binaryFileMap.size} binary files.`
       );
 
-      const newDiffBlock = generateDiffString(this.toolContext, true);
+      const newDiffBlock = generatePaperDiffReport(this.toolContext, true);
       currentExpert?.transcript.replaceEntry(
         PROJECT_DIFF_ID,
         newDiffBlock
@@ -484,7 +480,7 @@ ${this.task}
           await this.updateLog(errorMessage);
           await this.updateProgressLog(`${errorMessage}`);
         }
-        this.toolContext.overseer?.updateCurrentDiff(generateDiffString(this.toolContext, true));
+        this.toolContext.overseer?.updateCurrentDiff(generatePaperDiffReport(this.toolContext, true));
         continue;
       }
 
@@ -506,7 +502,7 @@ ${this.task}
 
   private addToEachExpertTranscript(speaker: string, content: string, options?: AddEntryOptions, exclude?: number) {
     for (let i = 0; i < this.experts.length; i++)
-      if (!exclude || (exclude != i))
+      if (exclude === undefined || exclude !== i)
         this.experts[i].transcript.addEntry(speaker, content, options);
   }
 
@@ -565,3 +561,4 @@ ${this.task}
     return { result: workPhaseResult, retrospective: retrospective };
   }
 }
+
