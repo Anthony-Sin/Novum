@@ -1,34 +1,30 @@
 ﻿---
 name: "draft-crl-tool-string"
 ---
-**Complete Response Letter Drafting Tool (${strings/tool-prefix}DRAFTCRL)**
-* **Purpose:** Compile all findings from completed WorkPhases into a structured, regulatory-grade Complete Response Letter (CRL) or Approval Recommendation document. This tool is the primary instrument of the Medical Writer agent and is invoked only after all mandatory audit WorkPhases — Biostatistical Audit, Pharmacovigilance Scan, CFR Compliance Check, Data Reconciliation, and Risk-Benefit Analysis — have returned completed results. The output is a formal regulatory document written in the voice of the FDA Advisory Committee, not the sponsor. It must be adversarial, evidence-grounded, and citation-specific.
+**Expression of Concern and Retraction Recommendation Drafting Tool (${strings/tool-prefix}DRAFTCRL)**
+* **Purpose:** Compile all forensic findings from completed WorkPhases into a structured, standards-compliant Expression of Concern (EoC), Retraction Recommendation, or Editor Briefing Document. This tool is the primary instrument of the Forensic Science Writer agent and is invoked only after all mandatory audit WorkPhases — Statistical Reconstruction, Result Anomaly Detection, Dataset Integrity Review, Publication Ethics Compliance Review, and Research Impact Assessment — have returned completed results. The output is a formal research integrity document written in the voice of an independent forensic audit committee, not the authors. It must be adversarial, evidence-grounded, and citation-specific.
 * **Syntax:**
 ${strings/tool-prefix}DRAFTCRL
-SUBMISSION_TYPE: <NDA | BLA | IND>
-APPLICATION_NUMBER: <The FDA application number, e.g., NDA 214787, or DRAFT if not yet assigned>
-DRUG_NAME: <INN and proposed trade name>
-PROPOSED_INDICATION: <Exact text of the proposed indication from the draft labeling>
-SPONSOR_NAME: <Legal name of the sponsor entity>
-OVERALL_VERDICT: <APPROVABLE | NOT_APPROVABLE | COMPLETE_RESPONSE_REQUIRED — must match the Orchestrator's synthesized determination prior to Medical Writer engagement>
+PAPER_TITLE: <Full title of the paper under investigation>
+DOI: <DOI of the paper, or UNKNOWN if not available>
+AUTHORS: <Author list as published>
+JOURNAL: <Journal name and publication year>
+OVERALL_VERDICT: <RETRACTION_RECOMMENDED | EXPRESSION_OF_CONCERN | NO_FINDING — must match the Orchestrator's synthesized determination prior to Forensic Science Writer engagement>
 WORKPHASE_OUTPUTS:
-A JSON array referencing every completed WorkPhase result that must be incorporated into the CRL. Each entry must include: 'phase_id', 'agent_persona', 'verdict', and 'key_findings_summary'. The Medical Writer will retrieve the full output of each referenced phase from the project context.
-LABEL_REVISION_REQUESTS: <A JSON array of specific sections of the draft labeling that must be revised, each with 'section' (e.g., "Warnings and Precautions", "Adverse Reactions", "Indications and Usage") and 'required_change'>
-POST_MARKET_COMMITMENTS: <A JSON array of any post-market study commitments (PMCs) or post-market requirements (PMRs) the committee is conditioning approval upon, if the verdict is APPROVABLE. Enter [] if not applicable.>
+A JSON array referencing every completed WorkPhase result that must be incorporated into the document. Each entry must include: 'phase_id', 'agent_persona', 'verdict', and 'key_findings_summary'. The Forensic Science Writer will retrieve the full output of each referenced phase from the project context.
+DATA_INTEGRITY_VIOLATIONS: <A JSON array of specific data integrity violations found, each with 'section' (e.g., 'Figure 3', 'Table 2', 'Supplementary Data File 1') and 'violation_description'>
+POST_INVESTIGATION_REQUIREMENTS: <A JSON array of any specific actions the journal or authors should take in response to the findings, e.g., 'Provide raw data files', 'Provide figure source files', 'Provide preregistration documentation'. Enter [] if not applicable.>
 END_DRAFTCRL
-* **Output Structure & Content to Expect:**
-  * The tool returns a complete, structured CRL document containing the following sections:
-    * **Executive Summary:** A 3–5 paragraph plain-language summary of the committee's determination, suitable for public release, stating the overall verdict and the top three reasons for the determination.
-    * **Deficiency Section 1 — Efficacy:** Numbered list of all efficacy deficiencies, each with full citation to the specific STATAUDIT finding, the SAP deviation or protocol amendment that gave rise to it, and the data the sponsor would need to provide to resolve it.
-    * **Deficiency Section 2 — Safety:** Numbered list of all safety deficiencies, each citing the specific SAFETYSCAN finding, the AE preferred term and incidence data, and the required label change or additional study.
-    * **Deficiency Section 3 — Regulatory/CMC:** Numbered list of all CFR compliance deficiencies from the CFRCHECK output, each with the specific regulatory citation.
-    * **Deficiency Section 4 — Data Integrity:** Numbered list of all dataset integrity findings from the RECONCILE output, each with the specific dataset, variable, and subject records involved.
-    * **Labeling Revision Requests:** A redline-style enumeration of all required changes to the draft labeling, organized by section.
-    * **Post-Market Commitments (if applicable):** A formal enumeration of all PMCs/PMRs with proposed timelines and reporting requirements.
-    * **Path Forward:** A clear statement of what the sponsor must submit in a resubmission to address each deficiency, organized by deficiency class.
+* **Output Structure and Content to Expect:**
+  * The tool returns a complete, structured document containing the following sections:
+    * **Executive Summary:** A 3–5 paragraph plain-language summary of the forensic committee's determination, suitable for submission to a journal editor, stating the overall verdict and the top three reasons for the determination.
+    * **Finding Section 1 — Statistical Integrity:** Numbered list of all statistical integrity findings, each with full citation to the specific STATAUDIT finding, the preregistration deviation or post-hoc analysis change that gave rise to it, and the data the authors would need to provide to resolve it.
+    * **Finding Section 2 — Data and Figure Integrity:** Numbered list of all data and figure integrity findings, each citing the specific SAFETYSCAN or RECONCILE finding and the specific figure panel, table row, or data file involved.
+    * **Finding Section 3 — Publication Ethics Compliance:** Numbered list of all publication ethics violations from the CFRCHECK output, each with the specific COPE guideline or journal policy citation.
+    * **Finding Section 4 — Research Impact Assessment:** A summary of the downstream harm quantification from the impact assessment phase, including citation counts, clinical practice changes, and wasted follow-on funding.
+    * **Required Author or Journal Actions:** A clear statement of what the authors or journal must provide or do in response to each finding, organized by finding class.
+    * **Path to Resolution:** A clear statement of what evidence, if provided and verified, could change the verdict from RETRACTION_RECOMMENDED to EXPRESSION_OF_CONCERN or NO_FINDING.
 * **Rules and Usage:**
-  * **Every Finding Must Be Cited:** The CRL is a legal document. Every deficiency must be traceable to a specific WorkPhase output, dataset record, CFR citation, or statistical calculation. Unsupported assertions are not permitted.
-  * **No New Findings:** The Medical Writer may not introduce findings that were not documented in a prior WorkPhase output. If a gap is discovered during drafting, the Medical Writer must stop, flag the gap to the Orchestrator, and request a new WorkPhase to investigate before proceeding.
-  * **Verdict Consistency:** The overall verdict in the CRL must be logically consistent with the individual deficiency findings. A NOT_APPROVABLE verdict cannot coexist with zero CRITICAL deficiencies. An APPROVABLE verdict cannot stand if any CRITICAL safety deficiency remains unresolved.
-  * **Plain Language in the Executive Summary:** The Executive Summary must be comprehensible to a non-statistician member of the public. Statistical jargon in the executive summary will be flagged as a drafting deficiency.
-  * **Labeling is Protective, Not Promotional:** All language in the Labeling Revision Requests section must be written to protect the patient, not to preserve the sponsor's commercial claims. Any sponsor language that overstates efficacy or understates risk must be specifically identified and replaced with data-grounded, neutral language.
+  * **Every Finding Must Be Cited:** The EoC or Retraction Recommendation is a formal document. Every finding must be traceable to a specific WorkPhase output, data file, COPE citation, or statistical recalculation. Unsupported assertions are not permitted.
+  * **No New Findings:** The Forensic Science Writer may not introduce findings that were not documented in a prior WorkPhase output. If a gap is discovered during drafting, the Writer must stop, flag the gap to the Orchestrator, and request a new WorkPhase to investigate before proceeding.
+  * **Verdict Consistency:** The overall verdict must be logically consistent with the individual findings. A RETRACTION_RECOMMENDED verdict cannot coexist with zero CRITICAL findings. A NO_FINDING verdict cannot stand if any CRITICAL data integrity finding remains unresolved.

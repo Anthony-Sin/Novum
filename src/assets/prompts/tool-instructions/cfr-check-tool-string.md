@@ -1,27 +1,26 @@
 ﻿---
 name: "cfr-check-tool-string"
 ---
-**CFR Title 21 Compliance Audit Tool (${strings/tool-prefix}CFRCHECK)**
-* **Purpose:** Audit a submission document, clinical trial protocol, or data package against the applicable sections of the Code of Federal Regulations Title 21 (CFR Title 21), FDA guidance documents, and ICH guidelines. This tool is the primary instrument of the Regulatory Affairs Specialist agent and is used to identify procedural, documentation, and substantive compliance deficiencies that constitute independent grounds for a Complete Response Letter, separate from any efficacy or safety findings.
+**Publication Ethics Compliance Tool (${strings/tool-prefix}CFRCHECK)**
+* **Purpose:** Audit a published paper, preprint, or associated documentation against the applicable COPE (Committee on Publication Ethics) guidelines, the journal's published editorial policies, ICMJE authorship criteria, IRB and ethics board requirements, and data sharing mandates. This tool is the primary instrument of the Publication Ethics Specialist agent and is used to identify procedural, documentation, and substantive publication ethics violations that constitute independent grounds for an Expression of Concern or Retraction Recommendation, separate from any statistical or data integrity findings.
 * **Syntax:**
 ${strings/tool-prefix}CFRCHECK
-DOCUMENT_TYPE: <IND | NDA | BLA | PROTOCOL_AMENDMENT | INFORMED_CONSENT | LABELING_DRAFT | REMS_PROPOSAL | IB>
-DOCUMENT_FILE: <Filename of the document to be audited, as present in the project context>
-PRIMARY_REGULATIONS:
-A JSON array of the specific CFR sections and ICH guidelines that are most directly applicable. Example: ["21 CFR 312.23", "21 CFR 314.50", "ICH E9(R1)", "ICH E6(R2)", "21 CFR 50.25"]. The tool will also scan against its full regulatory knowledge base, but will prioritize these sections in its output.
-SPONSOR_CERTIFICATIONS: <A summary or filename reference of any specific regulatory certifications or assurances the sponsor has made in the submission cover letter or Form FDA 356h>
-KNOWN_ISSUES: <A comma-separated list of compliance concerns already identified by other agents in prior WorkPhases, to avoid duplicate reporting and to verify if the document addresses them>
+DOCUMENT_TYPE: <RESEARCH_ARTICLE | CLINICAL_TRIAL_REPORT | SYSTEMATIC_REVIEW | CASE_REPORT | LETTER | PREPRINT>
+DOCUMENT_FILE: <Filename of the paper or document to be audited, as present in the project context>
+PRIMARY_STANDARDS:
+A JSON array of the specific COPE guidelines, ICMJE sections, and journal policies that are most directly applicable. Example: ["COPE Core Practices", "COPE Retraction Guidelines", "ICMJE Authorship Criteria", "Journal Data Sharing Policy", "IRB Requirement 21 CFR 56"]. The tool will also scan against its full publication ethics knowledge base, but will prioritize these standards in its output.
+AUTHOR_DISCLOSURES: <A summary or filename reference of any specific conflict of interest declarations, funding acknowledgments, or author contribution statements in the paper>
+KNOWN_ISSUES: <A comma-separated list of publication ethics concerns already identified by other agents in prior WorkPhases, to avoid duplicate reporting>
 END_CFRCHECK
-* **Output Structure & Content to Expect:**
+* **Output Structure and Content to Expect:**
   * The tool returns a structured compliance audit report containing:
-    * A Section-by-Section Compliance Matrix mapping each primary regulation to specific document sections and rating each as COMPLIANT, DEFICIENT, or NOT_ADDRESSED.
-    * A numbered Deficiency List where each deficiency includes: the specific CFR citation, the nature of the deficiency, the document location where it was found or is absent, and a recommended action (e.g., "Sponsor must provide..." or "Label must be revised to include...").
-    * A completeness check against the required CTD (Common Technical Document) module structure, flagging any modules or sections that are absent, abbreviated without justification, or cross-referenced to a document not present in the submission.
-    * An Informed Consent Assessment (if applicable) evaluating whether consent documents meet 21 CFR 50.25 requirements for disclosure of foreseeable risks, benefits, alternatives, and voluntary participation.
-    * An overall Regulatory Compliance Rating: COMPLETE (submission is procedurally complete), INCOMPLETE (one or more required elements are absent), or DEFICIENT (substantive regulatory violations that independently preclude approval).
+    * A Section-by-Section Compliance Matrix mapping each primary standard to specific paper sections and rating each as COMPLIANT, DEFICIENT, or NOT_ADDRESSED.
+    * A numbered Violation List where each violation includes: the specific COPE guideline or journal policy citation, the nature of the violation, the paper section where it was found or is absent, and a recommended action.
+    * A completeness check against required reporting standards (CONSORT, PRISMA, ARRIVE, or other applicable reporting checklist), flagging any required elements that are absent or inadequately reported.
+    * An Ethics Board Assessment evaluating whether the paper demonstrates adequate IRB or ethics committee approval for research involving human subjects or animals.
+    * An overall Publication Ethics Compliance Rating: COMPLIANT (paper meets all applicable publication ethics standards), DEFICIENT (one or more required elements are absent or inadequate), or VIOLATED (substantive publication ethics violations that independently support an Expression of Concern or Retraction Recommendation).
 * **Rules and Usage:**
-  * **Regulation Text is the Authority:** Interpretations of regulatory requirements must cite the specific CFR section or ICH guideline verbatim. Regulatory opinion without citation is inadmissible.
-  * **GCP Compliance is Non-Negotiable:** Any finding suggesting that the trial was not conducted in accordance with ICH E6(R2) Good Clinical Practice must be rated CRITICAL and automatically elevates the submission's overall compliance rating to DEFICIENT, regardless of other findings.
-  * **Protocol Amendments Under Scrutiny:** Any protocol amendment submitted after randomization began must be examined for whether it required a new IND safety report (21 CFR 312.32) and whether it was submitted to and approved by the IRB prior to implementation (21 CFR 312.66). Amendments that changed endpoints, enrollment criteria, or dose levels post-unblinding are presumptively integrity violations until the sponsor demonstrates otherwise.
-  * **Labeling Standards:** Draft labeling must comply with 21 CFR 201.56 and 201.57 (Physician Labeling Rule). Efficacy claims in the Indications and Usage section must be directly supported by the primary endpoint data from the pivotal trial(s). Any claim that is broader than what the data supports must be specifically cited as a labeling deficiency.
-  * **Pediatric Requirements:** The tool will automatically check whether the submission addresses the Pediatric Research Equity Act (PREA) requirements under 21 CFR 314.55, and flag if a pediatric study waiver or deferral was not included where required.
+  * **COPE Guidelines are the Authority:** Interpretations of publication ethics requirements must cite the specific COPE guideline or journal policy verbatim. Ethical opinion without citation is inadmissible.
+  * **Preregistration Violations are Non-Negotiable:** Any clinical trial or prospective observational study that lacks a preregistration record, or whose preregistration was submitted after data collection began, must be rated as a DEFICIENT finding and flagged for the Statistical Fraud Auditor to investigate for outcome switching.
+  * **Authorship Must Meet ICMJE Criteria:** Every listed author must have made contributions meeting all four ICMJE authorship criteria. Any author who cannot be shown to meet all four criteria must be flagged as a potential ghost authorship or gift authorship violation.
+  * **Data Sharing Commitments Must Be Verified:** If the paper includes a data availability statement committing to share raw data, the tool will verify whether the data is actually accessible at the stated location and flag any non-compliance with that commitment.

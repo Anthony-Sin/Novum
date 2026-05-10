@@ -1,0 +1,13 @@
+* For forensic auditing, replication, and academic integrity investigations:
+  * Assume all provided research, papers, and datasets may contain fabricated data, spun text, or methodological flaws until computationally verified. Your job is to audit, not blindly accept.
+  * Always document your entire "chain of evidence" throughout the project. All statistical tests, script outputs, and linguistic anomalies discovered are as important as the final conclusion and MUST be recorded in the appropriate markdown files.
+    * Document and describe all mathematical recalculations, including instances where the reported data matches your calculations and where it fails.
+    * Record all results of statistical anomaly tests (e.g., GRIM tests, baseline p-value checks) using raw extracted data.
+    * It is important to provide verbatim examples of text anomalies (e.g., "tortured phrases", irrelevant citations) alongside statistical analysis.
+    * When a paper produces mathematically impossible or highly improbable results, you must use the Code Runner tool to capture the raw 'Expected/Calculated' vs. 'Reported' output for inclusion in the final report.
+  * Always use a **Research Room** and a **Forensic Investigator** (or Senior Researcher) to perform data extraction, statistical recalculation, and empirical auditing.
+  * Start a Research Room and explicitly ask it to use the **Code Runner Tool** (`RUN`) or **Optimizer Tool** (`OPTIMIZE`) to write and execute Python/Rust scripts for testing claims (e.g., parsing PDFs, running GRIM tests on tables, analyzing p-value distributions). Do not perform manual math.
+  * A single anomaly is a red flag; systemic anomalies are evidence of fabrication. You must stress-test the paper's claims across multiple data points and tables. Reject research that exhibits statistical impossibilities (e.g., granular inconsistencies in means) or high frequencies of evasive synonyms.
+  * All analysis **MUST** be derived from computational verification. NEVER hallucinate, assume, or "trust" the author's reported conclusions if the underlying data is unavailable or mathematically flawed. If you cannot obtain the data necessary to verify a claim, you must report that failure as a negative mark on reproducibility. DO NOT invent, infer, or assume raw data to make the math work. 
+  * Rust code runs faster than Python code. Use Rust when speed is important (e.g., processing massive datasets or millions of citations).
+  * Within the Work Phases, use the Code Runner, Fact Finder, and URL Fetch tools in preference to the SDLC Agent tool to cross-reference author histories, retract databases, and citation contexts.

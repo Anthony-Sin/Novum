@@ -1,29 +1,26 @@
 ﻿---
 name: "risk-benefit-tool-string"
 ---
-**Risk-Benefit Ethics Analysis Tool (${strings/tool-prefix}RISKBENEFIT)**
-* **Purpose:** Conduct a structured, patient-centered risk-benefit analysis that contextualizes the statistical and clinical findings from all prior WorkPhases into a coherent ethical determination. This tool is the primary instrument of the Patient Safety Advocate agent. It is designed to counteract the tendency for statistical significance to be conflated with clinical meaningfulness, and to ensure that the voice of the patient population — including vulnerable subgroups, patients with comorbidities, and those who received no benefit — is represented in the final regulatory determination.
+**Research Impact Assessment Tool (${strings/tool-prefix}RISKBENEFIT)**
+* **Purpose:** Conduct a structured assessment of the downstream harm caused by a paper with integrity violations. This tool quantifies the real-world consequences of fraudulent or manipulated research, including citations built on the fake paper, clinical practice changes influenced by the paper's conclusions, wasted follow-on funding, and erosion of public trust. It is the primary instrument of the Research Community Advocate agent and is designed to ensure that the severity of the integrity violation is contextualized against the harm it has caused to downstream researchers, clinicians, and the public.
 * **Syntax:**
 ${strings/tool-prefix}RISKBENEFIT
-INDICATION: <The exact proposed indication as written in the draft labeling>
-PATIENT_POPULATION: <A description of the target population including disease severity, prior treatment history, available alternatives, and any vulnerable subgroups (pediatric, geriatric, renally impaired, hepatically impaired, pregnant)>
-EFFICACY_FINDINGS_SUMMARY: <A plain-language summary of the primary and key secondary efficacy findings, including the recalculated effect sizes from the Biostatistical Auditor's WorkPhase output. Must reference absolute risk reduction and NNT, not just relative risk or p-values.>
-SAFETY_FINDINGS_SUMMARY: <A plain-language summary of the key safety signals identified by the Pharmacovigilance Analyst's WorkPhase output, including the most serious AEs by incidence and severity, and the NNH for the most clinically significant harms.>
-AVAILABLE_ALTERNATIVES: <A description of currently approved therapies for this indication, including their efficacy and safety profiles, to contextualize the investigational drug's risk-benefit ratio>
-PATIENT_REPORTED_OUTCOMES: <Filename of PRO instrument data, if available, or NONE. This data represents the patient's own assessment of treatment benefit and tolerability.>
-UNMET_MEDICAL_NEED_CLAIM: <The sponsor's specific claim, if any, regarding unmet medical need — e.g., "no approved therapies exist," "prior therapies failed in this population," "this population has a median OS of X months">
+PAPER_TITLE: <Full title of the paper under investigation>
+RESEARCH_DOMAIN: <A description of the research field, the specific scientific question addressed, and the potential clinical or policy relevance of the paper's claimed findings>
+CITATION_COUNT: <The paper's current citation count, or UNKNOWN if not available>
+CITING_PAPER_SAMPLE: <A description or filename reference to a sample of papers that have cited this paper and built upon its conclusions, if available>
+CLAIMED_FINDING_SUMMARY: <A plain-language summary of what the paper claimed to demonstrate, including the specific conclusion that downstream researchers or clinicians would have acted upon>
+INTEGRITY_FINDINGS_SUMMARY: <A plain-language summary of the forensic findings from prior WorkPhases, describing what the investigation has shown about the paper's actual evidentiary status>
+FOLLOW_ON_FUNDING_ESTIMATE: <An estimate of grants or follow-on research funding that was awarded based on this paper's findings, or UNKNOWN if not available>
 END_RISKBENEFIT
-* **Output Structure & Content to Expect:**
-  * The tool returns a structured risk-benefit report containing:
-    * An Absolute Benefit Table: For every efficacy endpoint, the absolute event rate in the treatment arm vs. the control arm, the absolute risk reduction (ARR), and the Number Needed to Treat (NNT) with 95% CI.
-    * An Absolute Harm Table: For every TEAE of Grade 3 or higher and every SAE, the absolute event rate in treatment vs. control, the absolute risk increase (ARI), and the Number Needed to Harm (NNH).
-    * A Benefit-Harm Balance Matrix that directly compares the NNT for the primary efficacy endpoint against the NNH for the most clinically significant safety finding, with an interpretation of the clinical meaning of this ratio for an individual patient.
-    * A Subgroup Equity Assessment identifying whether the risk-benefit profile is consistent across pre-specified subgroups (sex, age, race, disease severity, geographic region) or whether specific subgroups bear a disproportionate share of the harm relative to benefit.
-    * A Clinical Meaningfulness Assessment evaluating whether the observed effect size (e.g., improvement in median PFS, change in MMSE score, reduction in exacerbation rate) exceeds the Minimal Clinically Important Difference (MCID) for this outcome in this population, with citation of the MCID source.
-    * An overall Risk-Benefit Determination: FAVORABLE (benefits clearly outweigh risks for the proposed indication), MARGINAL (benefits and risks are closely balanced; labeling restrictions, REMS, or post-market commitments may be needed), or UNFAVORABLE (risks outweigh benefits; approval not recommended).
+* **Output Structure and Content to Expect:**
+  * The tool returns a structured impact report containing:
+    * A Citation Impact Table: the number of papers citing this work, an estimate of how many directly built on the contested finding, and an estimate of how many of those conclusions may need to be re-evaluated.
+    * A Clinical or Policy Impact Assessment: whether the paper's claimed finding influenced clinical guidelines, regulatory decisions, or public policy, with citations to any such influence.
+    * A Wasted Resources Estimate: an estimate of follow-on research funding, researcher time, and infrastructure investment that was directed based on this paper's false or unreliable conclusions.
+    * A Scientific Record Contamination Score: a qualitative rating (LOW / MODERATE / HIGH / SEVERE) of the degree to which this paper has contaminated the scientific literature in its domain.
+    * An overall Research Impact Determination: MINIMAL (the paper had limited influence and its retraction would cause minimal disruption), SIGNIFICANT (the paper influenced a meaningful body of follow-on work requiring reappraisal), or SEVERE (the paper is foundational to a major research program or clinical practice and its retraction would require widespread reassessment).
 * **Rules and Usage:**
-  * **Absolute Numbers Always:** Relative risk reductions and hazard ratios must never be the sole basis for a favorable risk-benefit determination. The tool will always recalculate and present absolute measures. A 50% relative risk reduction from a 2% baseline event rate yields an ARR of 1% and an NNT of 100 — this must be stated explicitly.
-  * **The Patient Who Gets No Benefit Still Bears the Risk:** For every patient who benefits from treatment, some number of patients will experience harm without benefit. The Benefit-Harm Balance Matrix must account for this distributional reality.
-  * **Unmet Need Does Not Override Safety:** A high unmet medical need may lower the acceptable risk threshold, but it does not render any safety signal acceptable. If the drug carries a risk of fatal or irreversible harm, the safety signal must be fully characterized regardless of the severity of the underlying disease.
-  * **Vulnerable Populations Require Explicit Treatment:** If the proposed labeling includes use in pediatric, geriatric, or renally/hepatically impaired populations, but the pivotal trial did not enroll adequate numbers of these subgroups to support a reliable risk-benefit estimate, this is an explicit labeling deficiency that must be included in the Complete Response Letter.
-  * **PRO Data is Patient Voice:** If patient-reported outcome instruments were used in the trial, their results must be incorporated into the Clinical Meaningfulness Assessment. A treatment that produces a statistically significant improvement on a physician-assessed endpoint but no improvement on a patient-reported quality-of-life instrument raises a clinically important question about what the patient actually experiences.
+  * **Harm is Not Mitigated by Intent:** The downstream harm caused by a fabricated or manipulated paper is not diminished by whether the authors intended to deceive. The impact assessment must quantify the actual harm to the scientific record regardless of intent.
+  * **Citation Count is Not Impact:** A paper with 500 citations may have caused less harm than one with 50 citations if the 50-citation paper directly influenced a clinical guideline or a major funding program. The tool assesses qualitative influence, not just citation quantity.
+  * **Retraction Delay Amplifies Harm:** The longer a paper with integrity violations remains in the literature without an expression of concern or retraction, the greater the compounded downstream harm. The impact assessment must note the current time since publication and estimate the additional harm caused by any delay in the retraction process.

@@ -1,0 +1,213 @@
+
+--- multiAgentTool.ts ---
+
+
+
+import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from "../momoa_core/types";
+
+export interface MultiAgentTool {
+  
+  readonly displayName: string;
+  
+  readonly name: string;
+
+  
+  readonly endToken?: string;
+
+  
+  execute(params: Record<string, unknown>, context: MultiAgentToolContext): Promise<MultiAgentToolResult>;
+
+  extractParameters(invocation: string, context: MultiAgentToolContext): Promise<ToolParsingResult>;
+}
+
+
+--- multiAgentToolParser.ts ---
+
+
+
+import { MultiAgentToolContext } from '../momoa_core/types.js';
+import { getTool, getToolNames } from './multiAgentToolRegistry.js';
+
+
+export interface MultiAgentToolRequest {
+  toolName: string | undefined;
+  params: Record<string, unknown> | undefined; 
+}
+
+
+export class NotImplementedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'NotImplementedError';
+  }
+}
+
+
+function escapeRegExp(str: string): string {
+  // $& means the whole matched string
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+
+export async function parseToolRequest(text: string, toolPrefix: string, context: MultiAgentToolContext): Promise<MultiAgentToolRequest | string | undefined> {
+  const toolNames = getToolNames();
+
+  if (!toolNames || toolNames.length === 0) {
+    return undefined;
+  }
+
+  // 1. Create a dynamic regular expression to find all tool invocations.
+  // This regex will find any line that starts with the toolPrefix, followed by one of the valid toolNames.
+  // - `^`: Asserts position at the start of a line (due to the 'm' flag).
+  // - `(${toolNames.join('|')})`: Captures the matched toolName.
+  // - 'gm': Global flag (find all matches) and Multiline flag (`^` matches start of line).
+  const escapedPrefix = escapeRegExp(toolPrefix);
+  const toolNamesPattern = toolNames.map(escapeRegExp).join('|');
+  const regex = new RegExp(`^${escapedPrefix}(${toolNamesPattern})`, 'gm');
+
+  // 2. Find all matches using `matchAll`.
+  // This gives us an iterator of all results, which we convert to an array.
+  const matches = [...text.matchAll(regex)];
+
+  // 3. If no matches are found, no tool was invoked.
+  if (matches.length === 0) {
+    return undefined;
+  }
+
+  // 4. The first match contains our target tool and its starting position.
+  const firstMatch = matches[0];
+  const toolName = firstMatch[1]; // The first captured group is the tool name itself.
+
+  // The invocation string begins immediately after the entire matched prefix and name (e.g., after "@search").
+  const startIndex = (firstMatch.index ?? 0) + firstMatch[0].length;
+  
+  // 5. Determine the end of the invocation string.
+  // If there's a second match, the string ends right before it.
+  // Otherwise, the string continues to the end of the text.
+  const endIndex = matches.length > 1 ? matches[1].index : text.length;
+
+  // 6. Extract and trim the final invocation string.
+  const invocationString = text.substring(startIndex, endIndex).trim();
+
+  // 7. Use the rest of your logic to get the tool and extract its parameters.
+  const foundTool = getTool(toolName);
+  if (!foundTool) {
+    return undefined; // Safeguard in case tool name is not in the registry
+  }
+  const toolParsingResult = await foundTool.extractParameters(invocationString, context);
+
+  if (toolParsingResult.success) {
+    // CHANGE 2: Pass params directly without stringifying them.
+    // This ensures arrays remain arrays (e.g. ['a.py', 'b.py']) instead of becoming "['a.py', 'b.py']"
+    return { toolName, params: toolParsingResult.params };
+  }  else
+    return toolParsingResult.error
+}
+
+--- multiAgentToolRegistry.ts ---
+
+import { MultiAgentTool } from './multiAgentTool.js';
+import { fileReaderTool } from './implementations/fileReaderTool.js';
+import { smartFileEditorTool } from './implementations/smartFileEditorTool.js';
+import { statAuditTool } from './implementations/askExpertTool.js';
+import { fileSearchTool } from './implementations/fileSearchTool.js';
+import { paradoxAuditTool } from './implementations/paradoxResolutionTool.js';
+import { moveFolderTool } from './implementations/renameFolderTool.js';
+import { MultiAgentToolContext, MultiAgentToolResult } from './momoa_core/types.js';
+import { getAssetString } from './services/promptManager.js';
+import { regexValidatorTool } from './implementations/regexValidatorTool.js';
+import { restartProjectTool } from './implementations/projectRestartTool.js';
+import { revertFileTool } from './implementations/revertFileTool.js';
+import { registryLookupTool } from './implementations/urlFetchTool.js';
+import { LintTool } from './implementations/LintTool.js';
+import { registryFactFinderTool } from './implementations/FactFinderTool.js';
+import { monteCarloTool } from './implementations/optimizerTool.js';
+import { forensicScriptTool } from './implementations/codeRunnerTool.js';
+import { researchLogTool } from './implementations/researchLogTool.js';
+import { safetyScanTool } from './implementations/safetyScanTool.js';
+import { reconcileTool } from './implementations/reconcileTool.js';
+import { biasAuditTool } from './implementations/biasAuditTool.js';
+import { screencaptureTool } from './implementations/screencaptureTool.js';
+
+const tools = new Map<string, MultiAgentTool>();
+
+function registerTool(tool: MultiAgentTool): void {
+  if (tools.has(tool.name)) {
+    console.warn(`Tool "${tool.name}" is already registered. Overwriting.`);
+  }
+  tools.set(tool.name, tool);
+}
+
+export function getToolNames(): string[] {
+  return [...tools.keys()];
+}
+
+export function getTool(toolName: string): MultiAgentTool | undefined {
+  return tools.get(toolName);
+}
+
+export async function executeTool(
+  toolName: string | undefined,
+  params: Record<string, unknown> | undefined,
+  context: MultiAgentToolContext
+): Promise<MultiAgentToolResult> {
+  const toolResultPrefix = await getAssetString('tool-result-prefix');
+  const toolResultSuffix = await getAssetString('tool-result-suffix');
+
+  if (!toolName) {
+    return { result: 'No valid tool name was provided.' };
+  }
+
+  const tool = tools.get(toolName);
+
+  if (!tool) {
+    return { result: `Error: Tool '${toolName}' is not implemented yet.` };
+  }
+
+  if (!params) {
+    return { result: `No valid parameters were found for ${tool?.displayName}.` };
+  }
+
+  try {
+    const toolResult = await tool.execute(params, context);
+    return {
+      result: `${toolResultPrefix}\n${toolResult.result}\n${toolResultSuffix}`,
+      transcriptReplacementID: toolResult.transcriptReplacementID,
+      transcriptReplacementString: `${toolResultPrefix}\n${toolResult.transcriptReplacementString}\n${toolResultSuffix}`
+    };
+  } catch (error: unknown) {
+    let errorMessage: string;
+    if (error instanceof Error) {
+      errorMessage = `Error executing ${tool?.displayName} tool: ${error.message}`;
+    } else {
+      errorMessage = `Error executing ${tool?.displayName} tool.`;
+    }
+    return {
+      result: `${toolResultPrefix}\n${errorMessage}\n${toolResultSuffix}`,
+    };
+  }
+}
+
+// --- Core Document Tools ---
+registerTool(fileReaderTool);
+registerTool(smartFileEditorTool);
+registerTool(fileSearchTool);
+registerTool(revertFileTool);
+registerTool(moveFolderTool);
+registerTool(researchLogTool);
+registerTool(LintTool);
+registerTool(regexValidatorTool);
+registerTool(restartProjectTool);
+
+// --- Forensic Analysis Tools ---
+registerTool(statAuditTool);           // STATAUDIT  - Statistical Reconstruction
+registerTool(safetyScanTool);          // SAFETYSCAN - Result Anomaly Detector
+registerTool(reconcileTool);           // RECONCILE  - Dataset Integrity
+registerTool(monteCarloTool);          // MONTECARLO - Fabrication Plausibility Simulator
+registerTool(forensicScriptTool);      // RUNFORENSIC - Forensic Script Executor
+registerTool(paradoxAuditTool);        // PARADOXAUDIT - Contradiction Resolution
+registerTool(registryFactFinderTool);  // FACTFINDER - Preregistration & Provenance
+registerTool(registryLookupTool);      // URL/FETCH  - Registry & Retraction Fetcher
+registerTool(biasAuditTool);           // BIASAUDIT  - Overseer Bias Auditor
+registerTool(screencaptureTool);       // SCREENCAPTURE - Figure Integrity Tool
+
