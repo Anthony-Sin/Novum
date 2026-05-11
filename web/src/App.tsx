@@ -130,15 +130,6 @@ export default function App() {
             <span className="w-px h-3 bg-line" />
             <p className="text-[9px] uppercase tracking-[0.2em] opacity-40 font-bold">Paper Forensics</p>
           </div>
-          
-          <div className="flex items-center gap-3">
-            <p className="text-[9px] font-bold opacity-30 uppercase tracking-tighter">{user.displayName}</p>
-            <img 
-              src={user.photoURL || ''} 
-              alt={user.displayName || ''} 
-              className="w-5 h-5 rounded-full grayscale opacity-40 hover:grayscale-0 transition-all duration-500 hover:scale-110"
-            />
-          </div>
         </motion.header>
 
         <div className="flex-1 overflow-hidden relative">

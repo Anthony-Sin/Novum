@@ -26,43 +26,6 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ activeId, onNew, onSelect, threads, onSelectPaper }: SidebarProps) {
-  const [showLatestPapers, setShowLatestPapers] = useState(false);
-  const [latestPapers, setLatestPapers] = useState<Paper[]>([]);
-  const [loadingPapers, setLoadingPapers] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // 2. Improved fetch logic with error handling and unmount protection
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchPapers = async () => {
-      if (!showLatestPapers || latestPapers.length > 0) return;
-      
-      setLoadingPapers(true);
-      setError(null);
-
-      try {
-        const res = await fetch('/api/latest-papers?limit=5');
-        if (!res.ok) throw new Error('Failed to fetch papers');
-        
-        const data = await res.json();
-        if (isMounted) setLatestPapers(data);
-      } catch (err) {
-        console.error("Failed to fetch latest papers:", err);
-        if (isMounted) setError("Could not load papers.");
-      } finally {
-        if (isMounted) setLoadingPapers(false);
-      }
-    };
-
-    fetchPapers();
-
-    // Cleanup function prevents state updates if component unmounts
-    return () => {
-      isMounted = false;
-    };
-  }, [showLatestPapers, latestPapers.length]);
-
   return (
     <div className="w-12 lg:w-14 group flex flex-col h-screen border-r border-line bg-beige-bg fixed left-0 top-0 z-50 transition-all duration-500 hover:lg:w-60">
       
@@ -94,69 +57,11 @@ export default function Sidebar({ activeId, onNew, onSelect, threads, onSelectPa
               New Investigation
             </span>
           </button>
-          
-          <button
-            onClick={() => setShowLatestPapers((prev) => !prev)}
-            className={cn(
-              "w-full flex items-center justify-center lg:justify-start gap-4 p-2.5 text-ink border transition-all rounded-sm group/btn",
-              showLatestPapers ? "border-ink bg-white/50" : "border-line hover:border-ink hover:bg-white/50"
-            )}
-          >
-            <Library className={cn("w-4 h-4 shrink-0 transition-transform", showLatestPapers && "text-ink")} />
-            <span className="hidden group-hover:lg:block font-bold text-[10px] uppercase tracking-[0.2em] whitespace-nowrap">
-              Latest Papers
-            </span>
-          </button>
         </div>
-
-        {/* Discovery / Latest Papers Section */}
-        {showLatestPapers && (
-          <div className="space-y-3 pt-4 border-t border-line/50 hidden group-hover:lg:block animate-in slide-in-from-top-2 fade-in duration-300">
-            <h3 className="font-bold text-[9px] uppercase tracking-[0.2em] text-ink/60 px-1">Discovery</h3>
-            
-            <div className="space-y-1">
-              {loadingPapers ? (
-                <div className="flex items-center gap-2 px-2 py-3 text-ink/40">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  <p className="text-[10px] italic">Loading repository...</p>
-                </div>
-              ) : error ? (
-                <div className="flex items-center gap-2 px-2 py-3 text-red-500/70">
-                  <AlertCircle className="w-3 h-3" />
-                  <p className="text-[10px] italic">{error}</p>
-                </div>
-              ) : latestPapers.length === 0 ? (
-                <p className="text-[10px] text-ink/40 italic px-2 py-3">No recent papers found.</p>
-              ) : (
-                latestPapers.map((paper) => (
-                  <button
-                    key={paper.id}
-                    // 3. Strict fallback logic: Download URL first, then DOI, then generic ID URL
-                    onClick={() => onSelectPaper(paper.downloadUrl || (paper.doi ? `https://doi.org/${paper.doi}` : paper.id))}
-                    className="w-full text-left p-2.5 rounded-sm hover:bg-white/60 hover:translate-x-1 hover:shadow-sm hover:bg-accent/5 transition-all duration-300 border border-transparent hover:border-accent/20 group/paper flex flex-col gap-1 relative"
-                    title={paper.title}
-                  >
-                    <div className="flex items-start gap-2">
-                      <FileText className="w-3 h-3 shrink-0 text-ink/40 mt-0.5 group-hover/paper:text-accent transition-colors" />
-                      <p className="text-[10px] font-bold text-ink line-clamp-2 leading-snug relative group-hover/paper:text-accent transition-colors">
-                        {paper.title}
-                      </p>
-                    </div>
-                    {paper.authors && paper.authors.length > 0 && (
-                      <p className="text-[9px] text-ink/50 truncate pl-5">
-                        {paper.authors.map((a) => a.name).join(', ')}
-                      </p>
-                    )}
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Threads List */}
         {threads.length > 0 && (
-          <div className="space-y-2 pt-6 border-t border-line/50">
+          <div className="space-y-2 pt-6 border-t border-line/50 mt-4">
             <h3 className="font-bold text-[9px] uppercase tracking-[0.2em] text-ink/60 px-1 hidden group-hover:lg:block mb-3">
               Active Investigations
             </h3>
