@@ -1,4 +1,5 @@
-import { Settings, Plus, Archive, FileText } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Settings, Plus, Library } from 'lucide-react';
 import { cn } from '../lib/utils';
 import novumIcon from '../icons/novumIcon.png';
 interface SidebarProps {
@@ -6,9 +7,30 @@ interface SidebarProps {
   onNew: () => void;
   onSelect: (id: string) => void;
   threads: any[];
+  onSelectPaper: (url: string) => void;
 }
 
-export default function Sidebar({ activeId, onNew, onSelect, threads }: SidebarProps) {
+export default function Sidebar({ activeId, onNew, onSelect, threads, onSelectPaper }: SidebarProps) {
+  const [showLatestPapers, setShowLatestPapers] = useState(false);
+  const [latestPapers, setLatestPapers] = useState<any[]>([]);
+  const [loadingPapers, setLoadingPapers] = useState(false);
+
+  useEffect(() => {
+    if (showLatestPapers && latestPapers.length === 0) {
+      setLoadingPapers(true);
+      fetch('/api/latest-papers?limit=5')
+        .then(res => res.json())
+        .then(data => {
+          setLatestPapers(data);
+          setLoadingPapers(false);
+        })
+        .catch(err => {
+          console.error(err);
+          setLoadingPapers(false);
+        });
+    }
+  }, [showLatestPapers]);
+
   return (
     <div className="w-12 lg:w-14 group flex flex-col h-screen border-r border-line bg-beige-bg fixed left-0 top-0 z-50 transition-all duration-500 hover:lg:w-60">
       <div className="p-4 border-b border-line flex items-center justify-center lg:justify-start gap-4 overflow-hidden h-[57px]">
@@ -33,7 +55,36 @@ export default function Sidebar({ activeId, onNew, onSelect, threads }: SidebarP
             <Plus className="w-4 h-4 shrink-0 transition-transform group-hover/btn:rotate-90" />
             <span className="hidden group-hover:lg:block font-bold text-[10px] uppercase tracking-[0.2em] whitespace-nowrap">New Investigation</span>
           </button>
+          <button
+            onClick={() => setShowLatestPapers(!showLatestPapers)}
+            className="w-full flex items-center justify-center lg:justify-start gap-4 p-2.5 text-ink border border-line hover:border-ink transition-all rounded-sm group/btn"
+          >
+            <Library className="w-4 h-4 shrink-0 transition-transform" />
+            <span className="hidden group-hover:lg:block font-bold text-[10px] uppercase tracking-[0.2em] whitespace-nowrap">Latest Papers</span>
+          </button>
         </div>
+
+        {showLatestPapers && (
+          <div className="space-y-2 pt-4 border-t border-line/50 hidden group-hover:lg:block">
+            <h3 className="font-bold text-[9px] uppercase tracking-[0.2em] text-ink/60 mb-2">Discovery</h3>
+            {loadingPapers ? (
+              <p className="text-[10px] text-ink/40 italic">Loading papers...</p>
+            ) : latestPapers.length === 0 ? (
+              <p className="text-[10px] text-ink/40 italic">No papers found.</p>
+            ) : (
+              latestPapers.map((paper, i) => (
+                <button
+                  key={i}
+                  onClick={() => onSelectPaper(paper.doi ? `https://doi.org/${paper.doi}` : paper.downloadUrl || paper.id)}
+                  className="w-full text-left p-2 rounded hover:bg-white/40 transition-colors border border-transparent hover:border-line"
+                >
+                  <p className="text-[10px] font-bold text-ink truncate">{paper.title}</p>
+                  <p className="text-[9px] text-ink/60 truncate">{paper.authors?.map((a: any) => a.name).join(', ')}</p>
+                </button>
+              ))
+            )}
+          </div>
+        )}
 
         <div className="space-y-4 pt-6 border-t border-line/50">
           <div className="space-y-1">

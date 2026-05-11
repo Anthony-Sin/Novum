@@ -4,13 +4,21 @@ import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 
 interface ThreadInputProps {
-  onStart: (prompt: string) => void;
+  onStart: (prompt: string, paperUrl: string) => void;
   isStarting?: boolean;
+  initialPaperUrl?: string;
 }
 
-export default function ThreadInput({ onStart, isStarting }: ThreadInputProps) {
+export default function ThreadInput({ onStart, isStarting, initialPaperUrl = '' }: ThreadInputProps) {
   const [prompt, setPrompt] = useState('');
+  const [paperUrl, setPaperUrl] = useState(initialPaperUrl);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (initialPaperUrl) {
+      setPaperUrl(initialPaperUrl);
+    }
+  }, [initialPaperUrl]);
 
   const adjustHeight = () => {
     const textarea = textareaRef.current;
@@ -26,9 +34,10 @@ export default function ThreadInput({ onStart, isStarting }: ThreadInputProps) {
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (prompt.trim() && !isStarting) {
-      onStart(prompt.trim());
+    if (prompt.trim() && paperUrl.trim() && !isStarting) {
+      onStart(prompt.trim(), paperUrl.trim());
       setPrompt('');
+      setPaperUrl('');
     }
   };
 
@@ -65,6 +74,13 @@ export default function ThreadInput({ onStart, isStarting }: ThreadInputProps) {
             Autonomous Logic // Agentic Testing // Zero-Bias Observation
           </p>
         </div>
+
+        <div className="bg-white/40 border border-line rounded-lg p-6 max-w-2xl mx-auto text-left shadow-sm">
+          <h3 className="font-bold text-xs uppercase tracking-widest text-ink mb-2">Research Objective</h3>
+          <p className="font-serif italic text-sm text-ink/70 leading-relaxed">
+            Harness the power of the CORE API to streamline paper processing and academic discovery. Link a target research paper (via DOI or URL) to initialize an autonomous forensic analysis of its methodologies, claims, and references.
+          </p>
+        </div>
       </motion.div>
 
       <form 
@@ -72,20 +88,30 @@ export default function ThreadInput({ onStart, isStarting }: ThreadInputProps) {
         className="w-full bg-white/60 backdrop-blur-md rounded-lg border border-line shadow-2xl shadow-ink/5 p-2 focus-within:border-ink transition-all duration-300"
       >
         <div className="flex flex-col gap-2 p-4">
-          <textarea
-            ref={textareaRef}
-            rows={1}
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit();
-              }
-            }}
-            placeholder="Describe your research objective..."
-            className="w-full bg-transparent outline-none resize-none font-serif italic text-lg lg:text-xl text-ink placeholder:text-ink/10"
-          />
+          <div className="space-y-4">
+            <input
+              type="text"
+              value={paperUrl}
+              onChange={(e) => setPaperUrl(e.target.value)}
+              placeholder="Paper DOI, URL, or identifier required"
+              className="w-full bg-transparent outline-none border-b border-line pb-2 font-mono text-xs text-ink placeholder:text-ink/20 focus:border-ink/50 transition-colors"
+            />
+
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
+              placeholder="Describe your research objective..."
+              className="w-full bg-transparent outline-none resize-none font-serif italic text-lg lg:text-xl text-ink placeholder:text-ink/10"
+            />
+          </div>
           
           <div className="flex items-center justify-between mt-4">
             <div className="flex gap-4 opacity-40">
@@ -96,10 +122,10 @@ export default function ThreadInput({ onStart, isStarting }: ThreadInputProps) {
             
             <button
               type="submit"
-              disabled={!prompt.trim() || isStarting}
+              disabled={!prompt.trim() || !paperUrl.trim() || isStarting}
               className={cn(
                 "flex items-center gap-2 px-6 py-2 rounded-sm font-bold text-[10px] uppercase tracking-[0.2em] transition-all",
-                prompt.trim() 
+                (prompt.trim() && paperUrl.trim())
                   ? "bg-ink text-white hover:bg-zinc-800" 
                   : "bg-ink/5 text-ink/20 cursor-not-allowed"
               )}

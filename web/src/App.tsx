@@ -39,14 +39,17 @@ export default function App() {
     return () => unsubscribe();
   }, [user.uid]);
 
-  const handleStartThread = async (prompt: string) => {
+  const [selectedPaperUrl, setSelectedPaperUrl] = useState<string | undefined>();
+
+  const handleStartThread = async (prompt: string, paperUrl: string) => {
     setIsStarting(true);
     try {
+      const fullPrompt = `Research Objective: ${prompt}\n\nTarget Paper: ${paperUrl}`;
       const title = await generateThreadTitle(prompt);
       const threadRef = await addDoc(collection(db, 'threads'), {
         userId: user.uid,
         title,
-        prompt,
+        prompt: fullPrompt,
         status: 'idle',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -66,6 +69,10 @@ export default function App() {
         activeId={activeThreadId || undefined} 
         onNew={() => setActiveThreadId(null)}
         onSelect={setActiveThreadId}
+        onSelectPaper={(url) => {
+          setSelectedPaperUrl(url);
+          setActiveThreadId(null);
+        }}
       />
 
       <main className="flex-1 ml-12 lg:ml-14 relative flex flex-col transition-all duration-300">
@@ -106,7 +113,7 @@ export default function App() {
                 exit={{ opacity: 0 }}
                 className="h-full flex flex-col items-center justify-center"
               >
-                <ThreadInput onStart={handleStartThread} isStarting={isStarting} />
+                <ThreadInput onStart={handleStartThread} isStarting={isStarting} initialPaperUrl={selectedPaperUrl} />
               </motion.div>
             )}
           </AnimatePresence>
