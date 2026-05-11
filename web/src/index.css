@@ -8,10 +8,31 @@
 
   /* High Density Palette */
   --color-beige-bg: #F5F2ED;
-  --color-ink: #1A1A1A;
-  --color-accent: #4A5D4E;
-  --color-line: rgba(26, 26, 26, 0.12);
-  --color-white-translucent: rgba(255, 255, 255, 0.4);
+  --color-ink: #111111; /* Darker, crisper ink */
+  --color-accent: #3A6D73; /* Sophisticated muted cyan accent */
+  --color-line: rgba(17, 17, 17, 0.15); /* Slightly darker lines */
+  --color-white-translucent: rgba(255, 255, 255, 0.5); /* More solid for glassmorphism */
+
+  --animate-pulse-glow: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-shimmer: shimmer 2.5s infinite;
+  --animate-jiggle: jiggle 0.5s ease-in-out;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(58, 109, 115, 0.4); }
+  50% { box-shadow: 0 0 15px 5px rgba(58, 109, 115, 0.2); }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes jiggle {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  50% { transform: translateX(4px); }
+  75% { transform: translateX(-4px); }
 }
 
 @layer base {
@@ -25,7 +46,15 @@
 
 @layer components {
   .forensic-card {
-    @apply bg-white-translucent border border-line rounded-[2px] transition-all duration-200;
+    @apply bg-white-translucent border border-line rounded-lg shadow-[0_4px_24px_rgba(0,0,0,0.04)] backdrop-blur-md transition-all duration-300;
+  }
+
+  .forensic-shadow {
+    @apply shadow-[0_8px_32px_rgba(0,0,0,0.06)] hover:shadow-[0_16px_48px_rgba(0,0,0,0.08)];
+  }
+
+  .glass-panel {
+    @apply bg-white/60 backdrop-blur-xl border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.04)];
   }
 
   .status-dot {

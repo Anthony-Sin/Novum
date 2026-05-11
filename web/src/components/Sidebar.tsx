@@ -133,11 +133,12 @@ export default function Sidebar({ activeId, onNew, onSelect, threads, onSelectPa
                     key={paper.id}
                     // 3. Strict fallback logic: Download URL first, then DOI, then generic ID URL
                     onClick={() => onSelectPaper(paper.downloadUrl || (paper.doi ? `https://doi.org/${paper.doi}` : paper.id))}
-                    className="w-full text-left p-2.5 rounded-sm hover:bg-white/60 transition-all border border-transparent hover:border-line/50 group/paper flex flex-col gap-1"
+                    className="w-full text-left p-2.5 rounded-sm hover:bg-white/60 hover:translate-x-1 hover:shadow-sm hover:bg-accent/5 transition-all duration-300 border border-transparent hover:border-accent/20 group/paper flex flex-col gap-1 relative"
+                    title={paper.title}
                   >
                     <div className="flex items-start gap-2">
-                      <FileText className="w-3 h-3 shrink-0 text-ink/40 mt-0.5 group-hover/paper:text-ink/70" />
-                      <p className="text-[10px] font-bold text-ink line-clamp-2 leading-snug">
+                      <FileText className="w-3 h-3 shrink-0 text-ink/40 mt-0.5 group-hover/paper:text-accent transition-colors" />
+                      <p className="text-[10px] font-bold text-ink line-clamp-2 leading-snug relative group-hover/paper:text-accent transition-colors">
                         {paper.title}
                       </p>
                     </div>
@@ -165,16 +166,16 @@ export default function Sidebar({ activeId, onNew, onSelect, threads, onSelectPa
                   key={thread.id}
                   onClick={() => onSelect(thread.id)}
                   className={cn(
-                    "w-full flex items-center gap-4 px-2.5 py-3 transition-all border-l-2 rounded-r-sm",
+                      "w-full flex items-center gap-4 px-2.5 py-3 transition-all border-l-2 rounded-r-sm hover:translate-x-1 duration-300",
                     activeId === thread.id 
-                      ? "border-ink bg-white/60 opacity-100 shadow-sm" 
+                        ? "border-accent bg-accent/5 opacity-100 shadow-sm"
                       : "border-transparent opacity-50 hover:opacity-100 hover:bg-white/30"
                   )}
                 >
                   <div className="w-4 h-4 flex items-center justify-center shrink-0">
                     <div className={cn(
                       "w-1.5 h-1.5 rounded-full transition-all duration-300", 
-                      activeId === thread.id ? "bg-ink scale-100" : "bg-ink/30 scale-75"
+                        activeId === thread.id ? "bg-accent scale-100 shadow-[0_0_8px_rgba(58,109,115,0.8)] animate-pulse-glow" : "bg-ink/30 scale-75"
                     )} />
                   </div>
                   <span className="hidden group-hover:lg:block truncate text-[10px] font-bold uppercase tracking-tight whitespace-nowrap">
