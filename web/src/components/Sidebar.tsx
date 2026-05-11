@@ -76,7 +76,7 @@ export default function Sidebar({ activeId, onNew, onSelect, threads, onSelectPa
           />
         </div>
         <div className="hidden group-hover:lg:block overflow-hidden whitespace-nowrap animate-in fade-in duration-300">
-          <h1 className="font-bold text-xs tracking-widest uppercase text-ink">Forensics</h1>
+          <h1 className="font-bold text-xs tracking-widest uppercase text-ink">Novum</h1>
         </div>
       </div>
 

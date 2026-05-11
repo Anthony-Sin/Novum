@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ArrowRight, Paperclip, Search, FlaskConical, Loader2, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, Paperclip, Search, FlaskConical, Loader2, Sparkles, AlertCircle, CheckCircle2, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 
@@ -77,70 +77,76 @@ export default function ThreadInput({ onStart, isStarting, initialPaperUrl = '' 
 
   const examples = [
     {
-      title: "Llama-3 Hallucination Analysis",
-      prompt: "Analyze the primary cause of latent hallucination in the Llama-3 70B RAG pipeline using recent telemetry.",
+      title: "Paper Mill Detection",
+      prompt: "Investigate the target paper for signs of paper mill generation, including tortured phrases and impossible datasets.",
       icon: <AlertCircle className="w-3.5 h-3.5" />
     },
     {
-      title: "Self-Correction Benchmarking",
-      prompt: "Benchmark self-correction capabilities in GPT-4o vs Claude 3.5 Sonnet for code-generation tasks.",
+      title: "Methodology Audit",
+      prompt: "Benchmark the reported methodologies against standard protocols to identify falsified methodologies.",
       icon: <FlaskConical className="w-3.5 h-3.5" />
     },
     {
-      title: "Context Window Truncation",
-      prompt: "Investigate if document retrieval window (K=5) leads to evidence truncation in forensic traces.",
+      title: "Reference Truncation Analysis",
+      prompt: "Analyze the references and citation network to verify authenticity and identify citation cartels.",
       icon: <Search className="w-3.5 h-3.5" />
     }
   ];
 
   return (
-    <div className="w-full max-w-3xl px-8 flex flex-col items-center">
+    <div className="w-full max-w-3xl px-8 flex flex-col items-center pt-8">
       <motion.div 
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full space-y-12 mb-12 text-center"
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="w-full space-y-8 mb-8 text-center"
       >
-        <div className="space-y-6">
-          <h2 className="font-serif italic text-4xl lg:text-5xl text-ink tracking-tight leading-tight max-w-2xl mx-auto">
+        <div className="space-y-4">
+          <motion.h2
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+            className="font-serif italic text-4xl lg:text-5xl text-ink tracking-tight leading-tight max-w-2xl mx-auto"
+          >
             Systematic Forensics for Scientific Papers
-          </h2>
-          <p className="text-[10px] uppercase tracking-[0.4em] font-bold opacity-30">
-            Autonomous Logic // Agentic Testing // Zero-Bias Observation
-          </p>
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="text-[10px] uppercase tracking-[0.4em] font-bold text-accent/80"
+          >
+            Identify Paper Mills // Avoid Wasting Millions // Zero-Bias Observation
+          </motion.p>
         </div>
-
-        <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="glass-panel rounded-lg p-6 max-w-2xl mx-auto text-left forensic-shadow"
-        >
-          <h3 className="font-bold text-xs uppercase tracking-widest text-accent mb-2">Research Objective</h3>
-          <p className="font-serif italic text-sm text-ink/70 leading-relaxed">
-            Harness the power of the CORE API to streamline paper processing and academic discovery. Link a target research paper (via DOI or URL) to initialize an autonomous forensic analysis of its methodologies, claims, and references.
-          </p>
-        </motion.div>
       </motion.div>
 
       <motion.form
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
+        transition={{ delay: 0.3, duration: 0.5 }}
         onSubmit={handleSubmit} 
-        className="w-full glass-panel rounded-lg shadow-2xl shadow-accent/5 p-2 focus-within:border-accent transition-all duration-300 relative overflow-hidden"
+        className="w-full glass-panel rounded-xl shadow-2xl shadow-accent/10 p-2 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/30 transition-all duration-500 relative overflow-visible"
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] focus-within:animate-shimmer pointer-events-none" />
-        <div className="flex flex-col gap-2 p-4 relative z-10">
-          <div className="space-y-4 relative">
-            <div className="relative">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] focus-within:animate-shimmer pointer-events-none rounded-xl" />
+        <div className="flex flex-col gap-3 p-5 relative z-10">
+          <div className="space-y-5 relative">
+            <div className="relative flex items-center gap-2 group/input">
               <input
                 type="text"
                 value={paperUrl}
                 onChange={handleUrlChange}
-                placeholder="Paper DOI, URL, or identifier required"
+                placeholder="Target paper DOI or URL required"
                 className="w-full bg-transparent outline-none border-b border-line pb-2 font-mono text-xs text-ink placeholder:text-ink/30 focus:border-accent transition-colors pr-8"
               />
-              <div className="absolute right-0 top-0 bottom-2 flex items-center pr-1">
+              <div className="relative group/info cursor-help shrink-0 pb-2">
+                <Info className="w-4 h-4 text-ink/40 hover:text-accent transition-colors" />
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 bg-ink text-white text-[10px] leading-relaxed p-3 rounded shadow-xl opacity-0 invisible group-hover/info:opacity-100 group-hover/info:visible transition-all duration-300 z-50 pointer-events-none">
+                  Harness the power of the CORE API to streamline paper processing and academic discovery. Link a target research paper (via DOI or URL) to initialize an autonomous forensic analysis of its methodologies, claims, and references.
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-ink" />
+                </div>
+              </div>
+              <div className="absolute right-6 top-0 bottom-2 flex items-center pr-1">
                 <AnimatePresence mode="wait">
                   {isValidatingUrl ? (
                     <motion.div key="loading" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}>
@@ -170,12 +176,12 @@ export default function ThreadInput({ onStart, isStarting, initialPaperUrl = '' 
                   handleSubmit();
                 }
               }}
-              placeholder="Describe your research objective..."
-              className="w-full bg-transparent outline-none resize-none font-serif italic text-lg lg:text-xl text-ink placeholder:text-ink/10"
+              placeholder="Describe your forensic objective (e.g. check for manipulated data)..."
+              className="w-full bg-transparent outline-none resize-none font-serif italic text-lg lg:text-xl text-ink placeholder:text-ink/20 focus:placeholder:opacity-50 transition-all"
             />
           </div>
           
-          <div className="flex items-center justify-between mt-4">
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-line/50">
             <div className="flex gap-6 opacity-60">
               <div className="relative group/icon cursor-pointer">
                 <Paperclip className="w-4 h-4 hover:text-accent hover:scale-110 transition-all duration-300" />
@@ -220,16 +226,16 @@ export default function ThreadInput({ onStart, isStarting, initialPaperUrl = '' 
         </div>
       </motion.form>
 
-      <div className="w-full mt-20 space-y-6">
+      <div className="w-full mt-12 space-y-6">
         <div className="flex items-center gap-4">
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-30 whitespace-nowrap">Example Protocols</span>
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-30 whitespace-nowrap">Forensic Protocols</span>
           <div className="h-px bg-line w-full" />
         </div>
         
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
+            transition={{ delay: 0.5, staggerChildren: 0.1 }}
             className="grid grid-cols-1 md:grid-cols-3 gap-4"
         >
           {examples.map((ex, i) => (
