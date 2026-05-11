@@ -3,6 +3,7 @@ import { useFirebase } from './components/FirebaseProvider';
 import Sidebar from './components/Sidebar';
 import ThreadInput from './components/ThreadInput';
 import ResearchThread from './components/ResearchThread';
+import GlowBackground from './components/GlowBackground';
 import { db } from './lib/firebase';
 import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { generateThreadTitle } from './services/geminiService';
@@ -83,7 +84,8 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen bg-beige-bg overflow-hidden text-ink font-sans">
+    <div className="flex h-screen bg-beige-bg overflow-hidden text-ink font-sans relative">
+      <GlowBackground />
       <Sidebar 
         threads={threads} 
         activeId={activeThreadId || undefined} 

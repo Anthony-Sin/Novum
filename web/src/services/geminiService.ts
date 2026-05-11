@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "mock-key" });
 
 export async function generateResearchStep(prompt: string, context: string) {
   const model = "gemini-3-flash-preview";
