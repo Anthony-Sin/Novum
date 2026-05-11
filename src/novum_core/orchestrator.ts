@@ -752,12 +752,56 @@ ${retrospectiveObject.other_pertinent_notes || '--None--'}`.trim();
         this.transcriptManager.addEntry('user', 'Thanks! You have to use a tool, start a workphase or return a result.'); 
         this.updateLog(`Orchestrator didn't invoke a tool, start a workphase, or return a result`);
       }
+
+      // Hackathon Self-Improvement Loop Evaluation Step
+      await this.evaluateRecentActions();
+
     } catch (error: unknown) {
       if (error instanceof LlmBlockedError) {
         await this.emergencyShutdown(error.message);
       } else {
         throw error;
       }
+    }
+  }
+
+  private async evaluateRecentActions() {
+    this.updateLog(`\n### Evaluation Step: Self-Improvement Loop initiated`);
+    try {
+      this.sendMessage(JSON.stringify({
+        status: 'PROGRESS_UPDATES',
+        current_status_message: `Evaluating previous actions via Phoenix Trace Introspection...`,
+      }));
+
+      // Retrieve introspection context (trace summary for current session)
+      const introspectionResult = await executeTool('PHOENIX/INTROSPECT{', { query: `session_id="${this.sessionId}"` }, this.toolContext);
+
+      const evaluationPrompt = `
+      You are the orchestrator's self-improvement module. Review the trace introspection results of the recent actions.
+      Check for logic errors, hallucinated tools, or inefficient patterns (LLM-as-a-Judge).
+      If the execution was poor or problematic, output an evaluation and guidance on how to adjust the strategy.
+      If execution was acceptable, output nothing.
+
+      Trace Data:
+      ${introspectionResult.result}
+      `;
+
+      const response = await this.multiAgentGeminiClient.sendOneShotMessage(evaluationPrompt, { model: 'gemini-2.5-flash' });
+      const evaluationText = response?.text?.trim();
+
+      if (evaluationText && evaluationText.length > 20) {
+          this.updateLog(`Self-Reflection Feedback: ${evaluationText}`);
+          this.transcriptManager.addEntry('user', `[System Notice: Self-Reflection Output]\n${evaluationText}`);
+
+          if (this.overseer) {
+              this.overseer.forceGuidance(evaluationText, "Orchestrator Self-Improvement Loop Evaluation");
+          }
+      } else {
+          this.updateLog(`Self-Reflection: Traces look acceptable.`);
+      }
+
+    } catch (e: any) {
+        this.updateLog(`Failed to evaluate trace via introspection: ${e.message}`);
     }
   }
 

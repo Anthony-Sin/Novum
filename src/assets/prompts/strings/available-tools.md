@@ -29,6 +29,7 @@ If you need to refer to a tool in your conversation (e.g., explaining what you w
   * **CORRECT (Expected Behavior):**
     * "I will use the File Editing Tool to draft the Complete Response Letter."
     * "My plan is to first use the File Reading Tool and then I will issue the Return Signal."
+    * "I will use the Phoenix Introspection Tool to evaluate my previous actions."
     * "Okay, I will now use the File Editing Tool."
     * (Later in the same response, if actually using the tool):
 ```

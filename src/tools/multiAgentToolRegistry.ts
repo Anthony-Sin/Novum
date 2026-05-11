@@ -20,6 +20,7 @@ import { safetyScanTool } from './implementations/safetyScanTool.js';
 import { reconcileTool } from './implementations/reconcileTool.js';
 import { biasAuditTool } from './implementations/biasAuditTool.js';
 import { screencaptureTool } from './implementations/screencaptureTool.js';
+import { phoenixIntrospectionTool } from './implementations/phoenixIntrospectionTool.js';
 
 const tools = new Map<string, MultiAgentTool>();
 
@@ -102,6 +103,7 @@ registerTool(registryFactFinderTool);
 registerTool(registryLookupTool);      
 registerTool(biasAuditTool);           
 registerTool(screencaptureTool);       
+registerTool(phoenixIntrospectionTool);
 
 
 
