@@ -1,4 +1,7 @@
 
+import { sdk } from './tracing.js';
+sdk.start();
+
 import express, { Application } from 'express';
 import http from 'http';
 import cors from 'cors';

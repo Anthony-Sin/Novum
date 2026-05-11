@@ -10,6 +10,7 @@ import {
   Tool,
   Type,
 } from '@google/genai';
+import { trace } from '@opentelemetry/api';
 import { ApiPolicyManager } from './apiPolicyManager.js';
 import { DEFAULT_GEMINI_FLASH_MODEL } from '../config/models.js';
 import { TranscriptManager } from './transcriptManager.js';
@@ -405,33 +406,58 @@ export class GeminiClient {
       return this._createErrorResponse(`Policy check failed: ${error instanceof Error ? error.message : String(error)}`);
     }
 
+    const tracer = trace.getTracer('geminiClient');
+
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       try {
         if (signal?.aborted) throw new DOMException('Verification aborted.', 'AbortError');
 
-        const apiCallPromise = contentGenerator.generateContent({
-          model,
-          contents: currentContents,
-          config: generateConfig,
-        } as any);
-
-        let response: GenerateContentResponse;
-
-        if (signal) {
-          let abortHandler: () => void;
-          const abortPromise = new Promise<never>((_, reject) => {
-            abortHandler = () => reject(new DOMException('Request aborted by researcher.', 'AbortError'));
-            signal.addEventListener('abort', abortHandler, { once: true });
-          });
-
+        const response = await tracer.startActiveSpan(`generateContentWithRetries_attempt_${attempt}`, async (span) => {
           try {
-            response = await Promise.race([apiCallPromise, abortPromise]);
-          } finally {
-            signal.removeEventListener('abort', abortHandler!);
+            span.setAttribute('openinference.span.kind', 'LLM');
+            span.setAttribute('llm.model_name', model);
+            span.setAttribute('session.id', this.config.context.getSessionId());
+
+            const promptTexts = currentContents.map(c =>
+              c.parts?.map(p => p.text).filter(Boolean).join(' ') || ''
+            ).join('\n');
+            span.setAttribute('llm.prompts', promptTexts);
+
+            const apiCallPromise = contentGenerator.generateContent({
+              model,
+              contents: currentContents,
+              config: generateConfig,
+            } as any);
+
+            let res: GenerateContentResponse;
+
+            if (signal) {
+              let abortHandler: () => void;
+              const abortPromise = new Promise<never>((_, reject) => {
+                abortHandler = () => reject(new DOMException('Request aborted by researcher.', 'AbortError'));
+                signal.addEventListener('abort', abortHandler, { once: true });
+              });
+
+              try {
+                res = await Promise.race([apiCallPromise, abortPromise]);
+              } finally {
+                signal.removeEventListener('abort', abortHandler!);
+              }
+            } else {
+              res = await apiCallPromise;
+            }
+
+            const responseText = res.candidates?.[0]?.content?.parts?.map(p => p.text).filter(Boolean).join(' ') || '';
+            span.setAttribute('llm.output_messages', responseText);
+
+            span.end();
+            return res;
+          } catch (e: any) {
+            span.recordException(e);
+            span.end();
+            throw e;
           }
-        } else {
-          response = await apiCallPromise;
-        }
+        });
 
         if (!response?.candidates || response.candidates.length === 0) {
           throw new Error('Invalid or empty response during analysis.');
