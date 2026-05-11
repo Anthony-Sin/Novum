@@ -3,6 +3,7 @@ import { useFirebase } from './components/FirebaseProvider';
 import Sidebar from './components/Sidebar';
 import ThreadInput from './components/ThreadInput';
 import ResearchThread from './components/ResearchThread';
+import GlowBackground from './components/GlowBackground';
 import { db } from './lib/firebase';
 import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { generateThreadTitle } from './services/geminiService';
@@ -83,7 +84,8 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen bg-beige-bg overflow-hidden text-ink font-sans">
+    <div className="flex h-screen bg-beige-bg overflow-hidden text-ink font-sans relative">
+      <GlowBackground />
       <Sidebar 
         threads={threads} 
         activeId={activeThreadId || undefined} 
@@ -127,15 +129,6 @@ export default function App() {
             <h1 className="text-xs font-bold tracking-widest uppercase opacity-80 text-accent">Novum</h1>
             <span className="w-px h-3 bg-line" />
             <p className="text-[9px] uppercase tracking-[0.2em] opacity-40 font-bold">Paper Forensics</p>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <p className="text-[9px] font-bold opacity-30 uppercase tracking-tighter">{user.displayName}</p>
-            <img 
-              src={user.photoURL || ''} 
-              alt={user.displayName || ''} 
-              className="w-5 h-5 rounded-full grayscale opacity-40 hover:grayscale-0 transition-all duration-500 hover:scale-110"
-            />
           </div>
         </motion.header>
 
