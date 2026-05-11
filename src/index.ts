@@ -13,10 +13,37 @@ const port: number = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 const server: http.Server = http.createServer(app);
 
+import { fetchLatestPapers, fetchPaperByDoi } from './lib/coreApi.js';
 
 initializeWebSocketServer(port, server);
 
 app.use(cors());
+
+app.get('/api/latest-papers', async (req, res) => {
+    try {
+        const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+        const papers = await fetchLatestPapers(limit);
+        res.json(papers);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: String(e) });
+    }
+});
+
+app.get('/api/search-paper', async (req, res) => {
+    try {
+        const doi = req.query.doi as string;
+        if (!doi) {
+            return res.status(400).json({ error: 'Missing doi parameter' });
+        }
+        const paper = await fetchPaperByDoi(doi);
+        res.json(paper);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: String(e) });
+    }
+});
+
 app.post('/s/run-session', express.json({ type: '*/*' }), (req, res) => {
     try {
         const { sessionId } = req.body;
