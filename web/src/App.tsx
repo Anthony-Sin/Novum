@@ -20,8 +20,8 @@ export default function App() {
   // Mock user for demo purposes if not signed in
   const user = realUser || { 
     uid: 'demo-user', 
-    displayName: 'Anthony Sinchi', 
-    photoURL: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Anthony' 
+    displayName: 'Guest User',
+    photoURL: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Guest'
   };
 
   useEffect(() => {
