@@ -12,7 +12,7 @@ import { initializeWebSocketServer } from './websocket_server.js';
 import { abortSession, runSession, deleteProjectAndDependencies } from './firebase_server.js';
 import 'dotenv/config';
 const app: Application = express();
-const port: number = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const port: number = process.env.PORT ? parseInt(process.env.PORT, 10) : 4001;
 
 const server: http.Server = http.createServer(app);
 
